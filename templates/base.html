@@ -1,0 +1,1249 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CRM{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="{% static 'core/images/favicon.ico' %}">
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'core/images/favicon.ico' %}">
+    <link rel="stylesheet" href="{% static 'core/css/about-modal.css' %}">
+    <link rel="apple-touch-icon" href="{% static 'core/images/favicon.ico' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    {% block extra_css %}{% endblock %}
+    <style>
+        .navbar {
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 0.5rem 1rem;
+        }
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+        }
+        .logo-img {
+            height: 40px;
+            margin-right: 10px;
+        }
+        .nav-link {
+            font-weight: 500;
+            padding: 0.5rem 1rem !important;
+            border-radius: 4px;
+            margin: 0 2px;
+            transition: all 0.3s;
+        }
+        .nav-link:hover {
+            background-color: rgba(0, 123, 255, 0.1);
+            color: #0056b3 !important;
+        }
+        .navbar-toggler {
+            border: none;
+            padding: 0.25rem 0.5rem;
+        }
+        .btn-primary {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+        .btn-primary:hover {
+            background-color: #004494;
+            border-color: #004494;
+        }
+        .hero-section {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 5rem 0;
+            border-radius: 0 0 10px 10px;
+            margin-bottom: 2rem;
+        }
+        .content-section {
+            padding: 2rem 0;
+        }
+        .code-container {
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            font-family: 'Courier New', monospace;
+        }
+        h2 {
+            border-bottom: 2px solid #0056b3;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .footer {
+            background-color: #343a40;
+            color: white;
+            padding: 2rem 0;
+            margin-top: 3rem;
+        }
+        .newly-quoted-card {
+            background-color: #e91e63 !important;
+            background: linear-gradient(135deg, #e91e63 0%, #d81b60 100%) !important;
+            border: none !important;
+            box-shadow: 0 4px 12px rgba(233, 30, 99, 0.2) !important;
+        }
+        .newly-quoted-card .card-body {
+            position: relative;
+        }
+        .newly-quoted-card .card-body::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(135deg, #e91e63, #d81b60);
+            border-radius: inherit;
+            z-index: -1;
+        }
+        /* Custom badge styles for funnel stages */
+        .bg-pink {
+            background-color: #e91e63 !important;
+            color: white !important;
+        }
+        .badge.bg-pink {
+            background-color: #e91e63 !important;
+            color: white !important;
+        }
+        
+        /* Responsive logo display */
+        .mobile-logo {
+            display: none;
+        }
+        
+        .desktop-logo {
+            display: inline-block;
+        }
+        
+        /* Show mobile logo and hide desktop logo on mobile devices */
+        @media (max-width: 991.98px) {
+            .mobile-logo {
+                display: inline-block;
+            }
+            
+            .desktop-logo {
+                display: none;
+            }
+        }
+        /* Global navbar search box */
+        .nav-global-search {
+            flex: 1 1 320px;
+            min-width: 180px;
+            max-width: 520px;
+        }
+        .nav-search-wrap {
+            position: relative;
+            width: 100%;
+        }
+        .nav-search-icon {
+            position: absolute;
+            left: 0.85rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.95rem;
+            pointer-events: none;
+        }
+        .nav-search-input {
+            background-color: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #fff;
+            padding-left: 2.4rem;
+            padding-right: 2.4rem;
+            border-radius: 0.5rem;
+        }
+        .nav-search-input::placeholder {
+            color: rgba(255, 255, 255, 0.55);
+        }
+        .nav-search-input:focus {
+            background-color: rgba(255, 255, 255, 0.14);
+            border-color: rgba(255, 255, 255, 0.5);
+            box-shadow: none;
+            color: #fff;
+        }
+        .nav-search-help {
+            position: absolute;
+            right: 0.7rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #4ea1ff;
+            font-size: 1rem;
+            text-decoration: none;
+            line-height: 1;
+        }
+        .nav-search-help:hover { color: #80bdff; }
+        @media (max-width: 991.98px) {
+            .nav-global-search { max-width: none; margin: 0.5rem 0; }
+        }
+        .navbar-nav .nav-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 0.8rem !important;
+        }
+        .navbar-nav .nav-link i {
+            font-size: 1.2rem;
+        }
+        .navbar-nav .nav-link span {
+            display: none;
+            margin-left: 0.5rem;
+            white-space: nowrap;
+        }
+        .notification-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 0.65rem;
+            min-width: 18px;
+            height: 18px;
+            line-height: 18px;
+            padding: 0;
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            margin-left: 0 !important;
+            white-space: nowrap;
+        }
+        .notification-menu {
+            width: 360px;
+            max-width: 90vw;
+            max-height: min(70vh, calc(100vh - 100px));
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+        }
+        .notification-item {
+            white-space: normal;
+        }
+        .navbar-nav .nav-link:hover span {
+            display: inline-block;
+        }
+        @media (max-width: 991.98px) {
+            .navbar-nav .nav-link span {
+                display: inline-block;
+            }
+        }
+        
+        /* MFA (Two-Factor Authentication) Styles */
+        .letter-spacing {
+            letter-spacing: 0.3em;
+        }
+        
+        .mfa-icon {
+            font-size: 3rem;
+            color: #198754;
+        }
+        
+        .mfa-setup-container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .mfa-qr-code {
+            background: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            display: inline-block;
+        }
+        
+        .mfa-secret-code {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            word-break: break-all;
+        }
+
+        /* =====================================================================
+           MOBILE-NATIVE OVERHAUL  (Senior CSS Architect layer)
+           - All behavior scoped to @media (max-width: 768px)
+           - Desktop (>= 769px) is untouched
+           - GPU-friendly: animations use transform/opacity only
+           ===================================================================== */
+
+        /* ---- 1. DESIGN TOKENS (global, inert on desktop) ---- */
+        :root {
+            --m-space-1: 4px;
+            --m-space-2: 8px;
+            --m-space-3: 12px;
+            --m-space-4: 16px;
+            --m-space-5: 24px;
+            --m-space-6: 32px;
+
+            --m-radius-sm: 10px;
+            --m-radius-md: 16px;
+            --m-radius-lg: 22px;
+            --m-radius-pill: 999px;
+
+            --m-brand: #0056b3;
+            --m-brand-600: #004494;
+            --m-ink: #16202c;
+            --m-ink-soft: #5a6875;
+            --m-surface: #ffffff;
+            --m-surface-2: #f4f6f9;
+            --m-hairline: rgba(22, 32, 44, 0.08);
+
+            --m-glass-bg: rgba(255, 255, 255, 0.72);
+            --m-glass-dark: rgba(18, 22, 28, 0.62);
+
+            /* One soft elevation token, reused everywhere (no box-shadow abuse) */
+            --m-elev-1: 0 1px 2px rgba(16, 24, 40, 0.06), 0 4px 16px rgba(16, 24, 40, 0.08);
+            --m-elev-2: 0 6px 24px rgba(16, 24, 40, 0.14);
+
+            --m-touch: 44px;
+            --m-tabbar-h: 60px;
+
+            --m-safe-top: env(safe-area-inset-top, 0px);
+            --m-safe-bottom: env(safe-area-inset-bottom, 0px);
+            --m-safe-left: env(safe-area-inset-left, 0px);
+            --m-safe-right: env(safe-area-inset-right, 0px);
+
+            --m-ease-spring: cubic-bezier(0.2, 0.9, 0.3, 1.2);
+            --m-ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+            --m-dur: 0.25s;
+        }
+
+        /* ---- 6 & ANIMATION SYSTEM: keyframes (global, inert until used) ---- */
+        @keyframes m-shimmer {
+            0%   { background-position: -160% 0; }
+            100% { background-position: 160% 0; }
+        }
+        @keyframes m-pop-in {
+            0%   { opacity: 0; transform: translateY(12px) scale(0.98); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes m-sheet-up {
+            0%   { transform: translateY(100%); }
+            100% { transform: translateY(0); }
+        }
+        @keyframes m-spin { to { transform: rotate(360deg); } }
+
+        /* Skeleton screens (opt-in via class; usable on any breakpoint) */
+        .m-skeleton {
+            position: relative;
+            overflow: hidden;
+            background: var(--m-surface-2, #f4f6f9);
+            border-radius: var(--m-radius-sm, 10px);
+            background-image: linear-gradient(
+                100deg,
+                rgba(255,255,255,0) 20%,
+                rgba(255,255,255,0.75) 50%,
+                rgba(255,255,255,0) 80%
+            );
+            background-size: 200% 100%;
+            background-repeat: no-repeat;
+            animation: m-shimmer 1.3s ease-in-out infinite;
+        }
+        .m-skeleton--text { height: 0.85em; margin: 0.35em 0; }
+        .m-skeleton--title { height: 1.25em; width: 55%; margin-bottom: 0.6em; }
+        .m-skeleton--line-70 { width: 70%; }
+        .m-skeleton--line-90 { width: 90%; }
+        .m-skeleton--avatar { width: 44px; height: 44px; border-radius: 50%; }
+        .m-skeleton--card { height: 120px; border-radius: var(--m-radius-md, 16px); }
+        @media (prefers-reduced-motion: reduce) {
+            .m-skeleton { animation: none; }
+        }
+
+        /* =====================================================================
+           MOBILE SCOPE  (<= 768px only)
+           ===================================================================== */
+        @media (max-width: 768px) {
+
+            /* ---- 2. TOUCH-FRIENDLY BASE RESET ---- */
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
+            }
+            body {
+                overscroll-behavior-y: none;
+                background: var(--m-surface-2);
+                color: var(--m-ink);
+                /* room for bottom tab bar + safe area */
+                padding-bottom: calc(var(--m-tabbar-h) + var(--m-safe-bottom) + var(--m-space-4));
+            }
+            a, button, .btn, .nav-link, .dropdown-item,
+            [role="button"], input, select, textarea, label {
+                -webkit-tap-highlight-color: transparent;
+                touch-action: manipulation;
+            }
+            /* Prevent iOS zoom-on-focus: fields must be >= 16px */
+            input, select, textarea, .form-control, .form-select {
+                font-size: 16px !important;
+            }
+
+            /* ---- 3. GLASS HEADER (content scrolls under it) ---- */
+            .navbar.sticky-top {
+                background: var(--m-glass-dark) !important;
+                -webkit-backdrop-filter: saturate(160%) blur(20px);
+                backdrop-filter: saturate(160%) blur(20px);
+                padding-top: calc(0.5rem + var(--m-safe-top));
+                border-bottom: 1px solid rgba(255,255,255,0.08);
+                box-shadow: none;
+            }
+            /* Collapsed hamburger drawer becomes a spring-in glass sheet */
+            #navbarNav.navbar-collapse.collapsing,
+            #navbarNav.navbar-collapse.show {
+                background: var(--m-glass-dark);
+                -webkit-backdrop-filter: blur(20px);
+                backdrop-filter: blur(20px);
+                margin: var(--m-space-2) calc(-1 * var(--m-space-2)) 0;
+                padding: var(--m-space-2);
+                border-radius: var(--m-radius-md);
+            }
+            #navbarNav.navbar-collapse.show {
+                animation: m-pop-in var(--m-dur) var(--m-ease-spring);
+            }
+            .navbar-nav .nav-link,
+            .navbar-nav .dropdown-item {
+                min-height: var(--m-touch);
+                display: flex;
+                align-items: center;
+                border-radius: var(--m-radius-sm);
+                margin: 2px 0;
+            }
+
+            /* ---- MAIN CONTENT SPACING (safe-area aware) ---- */
+            .container.mt-4 {
+                padding-left: max(var(--m-space-4), var(--m-safe-left));
+                padding-right: max(var(--m-space-4), var(--m-safe-right));
+            }
+
+            /* ---- 3. SOFT-UI ELEVATION: CARDS ---- */
+            .card {
+                border: none;
+                border-radius: var(--m-radius-md);
+                box-shadow: var(--m-elev-1);
+                overflow: hidden;
+                transition: transform var(--m-dur) var(--m-ease-spring),
+                            box-shadow var(--m-dur) var(--m-ease-smooth);
+                will-change: transform;
+            }
+            /* Depress only when the card is intentionally tappable */
+            a > .card:active,
+            .m-tappable:active .card,
+            .card.m-tappable:active {
+                transform: scale(0.98);
+                box-shadow: var(--m-elev-2);
+            }
+            .card-header {
+                background: transparent;
+                border-bottom: 1px solid var(--m-hairline);
+            }
+
+            /* ---- 3. MICRO-INTERACTIONS: BUTTON DEPRESS ---- */
+            .btn {
+                /* Compact but still tappable on mobile (was 44px / 24px — too bulky) */
+                min-height: 38px;
+                padding-block: 0.3rem;
+                padding-inline: var(--m-space-3);
+                font-size: 0.8rem;
+                line-height: 1.2;
+                border-radius: var(--m-radius-pill);
+                font-weight: 600;
+                transition: transform 0.12s var(--m-ease-spring),
+                            filter 0.15s var(--m-ease-smooth),
+                            box-shadow var(--m-dur) var(--m-ease-smooth);
+                will-change: transform;
+            }
+            .btn i { font-size: 0.85rem; }
+            .btn:active { transform: scale(0.95); filter: brightness(0.96); }
+            /* Small buttons (icon action buttons in tables, toolbars) — extra compact */
+            .btn-sm {
+                min-height: 32px;
+                padding-inline: var(--m-space-2);
+                font-size: 0.75rem;
+            }
+            /* Split button groups (e.g. New Proposal | Multi-Option) stay tighter */
+            .btn-group > .btn + .btn { margin-left: var(--m-space-1); }
+
+            /* ---- 3. FLOATING-LABEL INPUTS + KEYBOARD-AWARE FOCUS ---- */
+            .form-control, .form-select {
+                border-radius: var(--m-radius-sm);
+                min-height: var(--m-touch);
+                border: 1px solid var(--m-hairline);
+                transition: border-color var(--m-dur) var(--m-ease-smooth),
+                            box-shadow var(--m-dur) var(--m-ease-smooth);
+            }
+            .form-control:focus, .form-select:focus {
+                border-color: var(--m-brand);
+                box-shadow: 0 0 0 4px rgba(0, 86, 179, 0.14);
+            }
+            .form-floating > label {
+                transition: transform var(--m-dur) var(--m-ease-spring),
+                            opacity var(--m-dur) var(--m-ease-smooth);
+            }
+            .form-floating > .form-control:focus ~ label,
+            .form-floating > .form-control:not(:placeholder-shown) ~ label {
+                transform: scale(0.82) translateY(-0.6rem) translateX(0.15rem);
+                color: var(--m-brand);
+            }
+            /* Keep a focused field clear of the on-screen keyboard */
+            .form-group:focus-within,
+            .mb-3:focus-within,
+            .form-floating:focus-within {
+                scroll-margin-bottom: 40vh;
+            }
+
+            /* ---- 2. PHYSICS-BASED SCROLLING & MOMENTUM ---- */
+            .table-responsive,
+            .m-scroll-x,
+            .modal-body,
+            .dropdown-menu.show {
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+            }
+            /* Horizontal snap carousel (opt-in via .m-snap-x) */
+            .m-snap-x {
+                display: flex;
+                gap: var(--m-space-3);
+                overflow-x: auto;
+                scroll-snap-type: x mandatory;
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior-x: contain;
+                scrollbar-width: none;
+                padding-bottom: var(--m-space-2);
+            }
+            .m-snap-x::-webkit-scrollbar { display: none; }
+            .m-snap-x > * { scroll-snap-align: start; flex: 0 0 82%; }
+            /* Full-screen vertical snap sections (opt-in via .m-snap-y) */
+            .m-snap-y {
+                scroll-snap-type: y mandatory;
+                overflow-y: auto;
+                height: 100dvh;
+                -webkit-overflow-scrolling: touch;
+            }
+            .m-snap-y > section { scroll-snap-align: start; min-height: 100dvh; }
+
+            /* ---- 5. TYPOGRAPHY SCALING WITH clamp() ---- */
+            body { font-size: clamp(0.95rem, 3.6vw, 1.05rem); line-height: 1.5; }
+            h1, .h1 { font-size: clamp(1.5rem, 6vw, 2rem); }
+            h2, .h2 { font-size: clamp(1.3rem, 5.2vw, 1.7rem); }
+            h3, .h3 { font-size: clamp(1.15rem, 4.6vw, 1.4rem); }
+            h4, .h4 { font-size: clamp(1.05rem, 4vw, 1.25rem); }
+            .lead   { font-size: clamp(1.05rem, 4vw, 1.2rem); }
+            .card-title { font-size: clamp(1.05rem, 4.4vw, 1.3rem); }
+            h2 { padding-bottom: var(--m-space-2); margin-bottom: var(--m-space-4); }
+
+            /* ---- 4. SPRING MODALS -> NATIVE BOTTOM SHEETS ---- */
+            .modal.fade .modal-dialog {
+                transform: translateY(16px);
+                transition: transform var(--m-dur) var(--m-ease-spring);
+            }
+            .modal.show .modal-dialog { transform: none; }
+            .modal-dialog:not(.modal-dialog-centered):not(.modal-fullscreen) {
+                position: fixed;
+                left: 0; right: 0; bottom: 0;
+                margin: 0;
+                max-width: 100%;
+            }
+            .modal-dialog:not(.modal-dialog-centered):not(.modal-fullscreen) .modal-content {
+                border: none;
+                border-radius: var(--m-radius-lg) var(--m-radius-lg) 0 0;
+                padding-bottom: calc(var(--m-safe-bottom) + var(--m-space-3));
+                box-shadow: var(--m-elev-2);
+            }
+            .modal.show .modal-dialog:not(.modal-dialog-centered):not(.modal-fullscreen) .modal-content {
+                animation: m-sheet-up var(--m-dur) var(--m-ease-spring);
+            }
+            /* Grab-handle affordance */
+            .modal-dialog:not(.modal-dialog-centered):not(.modal-fullscreen) .modal-content::before {
+                content: "";
+                position: absolute;
+                top: 8px; left: 50%;
+                width: 40px; height: 4px;
+                border-radius: var(--m-radius-pill);
+                background: var(--m-hairline);
+                transform: translateX(-50%);
+            }
+            .modal-backdrop.show { --bs-backdrop-opacity: 0.45; }
+
+            /* ---- 4. SWIPE-TO-ACTION LIST PATTERN (opt-in via .m-swipe) ---- */
+            .m-swipe {
+                position: relative;
+                overflow: hidden;
+                border-radius: var(--m-radius-md);
+                background: var(--m-surface);
+                box-shadow: var(--m-elev-1);
+            }
+            .m-swipe__content {
+                position: relative;
+                z-index: 2;
+                background: var(--m-surface);
+                padding: var(--m-space-4);
+                min-height: var(--m-touch);
+                transition: transform var(--m-dur) var(--m-ease-spring);
+                will-change: transform;
+                touch-action: pan-y;
+            }
+            .m-swipe__actions {
+                position: absolute;
+                top: 0; right: 0; bottom: 0;
+                z-index: 1;
+                display: flex;
+                align-items: stretch;
+            }
+            .m-swipe__actions .btn {
+                border-radius: 0;
+                min-width: 76px;
+                display: flex; align-items: center; justify-content: center;
+            }
+            .m-swipe.is-open .m-swipe__content { transform: translateX(-152px); }
+
+            /* ---- 1. THUMB-ZONE BOTTOM TAB BAR ---- */
+            .m-tabbar {
+                position: fixed;
+                left: 0; right: 0; bottom: 0;
+                z-index: 1040;
+                display: flex;
+                justify-content: space-around;
+                align-items: stretch;
+                height: calc(var(--m-tabbar-h) + var(--m-safe-bottom));
+                padding-bottom: var(--m-safe-bottom);
+                background: var(--m-glass-bg);
+                -webkit-backdrop-filter: saturate(180%) blur(20px);
+                backdrop-filter: saturate(180%) blur(20px);
+                border-top: 1px solid var(--m-hairline);
+            }
+            .m-tabbar__item {
+                flex: 1 1 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 2px;
+                min-height: var(--m-touch);
+                color: var(--m-ink-soft);
+                text-decoration: none;
+                font-size: 0.68rem;
+                font-weight: 600;
+                transition: color 0.15s var(--m-ease-smooth),
+                            transform 0.12s var(--m-ease-spring);
+            }
+            .m-tabbar__item i { font-size: 1.25rem; line-height: 1; }
+            .m-tabbar__item:active { transform: scale(0.9); }
+            .m-tabbar__item.is-active { color: var(--m-brand); }
+
+            /* ---- 1. FLOATING PRIMARY ACTION (thumb-zone FAB, opt-in) ---- */
+            .m-fab {
+                position: fixed;
+                right: max(var(--m-space-5), var(--m-safe-right));
+                bottom: calc(var(--m-tabbar-h) + var(--m-safe-bottom) + var(--m-space-4));
+                z-index: 1041;
+                width: 56px; height: 56px;
+                border-radius: var(--m-radius-pill);
+                display: flex; align-items: center; justify-content: center;
+                background: var(--m-brand);
+                color: #fff;
+                border: none;
+                box-shadow: var(--m-elev-2);
+                font-size: 1.35rem;
+                transition: transform 0.14s var(--m-ease-spring);
+            }
+            .m-fab:active { transform: scale(0.9); }
+
+            /* ---- 4. PULL-TO-REFRESH INDICATOR (driven by JS) ---- */
+            .m-ptr {
+                position: fixed;
+                top: calc(var(--m-safe-top) + 6px);
+                left: 50%;
+                z-index: 1039;
+                width: 34px; height: 34px;
+                margin-left: -17px;
+                border-radius: 50%;
+                background: var(--m-surface);
+                box-shadow: var(--m-elev-1);
+                display: flex; align-items: center; justify-content: center;
+                color: var(--m-brand);
+                opacity: 0;
+                transform: translateY(-20px) scale(0.6);
+                transition: opacity 0.15s var(--m-ease-smooth),
+                            transform 0.2s var(--m-ease-spring);
+                pointer-events: none;
+            }
+            .m-ptr.is-visible { opacity: 1; transform: translateY(0) scale(1); }
+            .m-ptr.is-loading i { animation: m-spin 0.7s linear infinite; }
+
+            /* Tables soften into elevated surfaces on phones */
+            .table-responsive {
+                border-radius: var(--m-radius-md);
+                box-shadow: var(--m-elev-1);
+            }
+
+            /* Respect reduced-motion across the mobile layer */
+            @media (prefers-reduced-motion: reduce) {
+                .card, .btn, .modal .modal-dialog, .m-tabbar__item,
+                .m-fab, .m-swipe__content, #navbarNav.navbar-collapse.show,
+                .modal-content, .m-ptr {
+                    transition: none !important;
+                    animation: none !important;
+                }
+            }
+        }
+
+        /* Desktop guard: mobile-only chrome never renders >= 769px */
+        @media (min-width: 769px) {
+            .m-tabbar, .m-fab, .m-ptr { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand me-4" href="{% url 'home' %}">
+		    <img src="{% static 'core/images/mi-logo-wht.png' %}" alt="Micro Image" class="logo-img desktop-logo">
+		    <img src="{% static 'core/images/logo.png' %}" alt="Micro Image" class="logo-img mobile-logo">
+		    CRM</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0 align-items-center">
+                    {% if user.is_authenticated %}
+                      {% if user.role == 'warehouse' %}
+                        {# Soft lock: warehouse staff see only the warehouse app + company announcements. #}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'warehouse:dashboard' %}" title="Warehouse Deliveries">
+                                <i class="fas fa-truck-fast"></i><span>Deliveries</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'warehouse:history' %}" title="Delivery History">
+                                <i class="fas fa-clock-rotate-left"></i><span>History</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link position-relative" href="{% url 'mass_mailing:announcement_feed' %}" title="Announcements &amp; Events">
+                                <i class="fas fa-bullhorn"></i><span>Announcements</span>
+                                {% if marketing_updates_count %}
+                                <span class="badge rounded-pill bg-danger" style="font-size:0.6rem;">{{ marketing_updates_count }}</span>
+                                {% endif %}
+                            </a>
+                        </li>
+                      {% else %}
+                      {% if user.role in 'avp,admin,president,gm,vp,salesperson,supervisor,teamlead,asm,marketing,technical_sales,techmgr,asst_techmgr' %}
+                       <li class="nav-item">
+                           <a class="nav-link" href="{% url 'customer_list' %}" title="Customers">
+                               <i class="fas fa-users"></i><span>Customers</span>
+                           </a>
+                       </li>
+                      {% endif %} 
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'delinquent_list' %}" title="Delinquent Accounts">
+                                <i class="fas fa-user-times text-danger"></i><span>Delinquent</span>
+                            </a>
+                        </li>
+                        {% if user.role in 'salesperson,supervisor,teamlead,asm,avp,admin,president,gm,vp,marketing' %}
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="leadsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Lead Management">
+                                    <i class="fas fa-user-plus"></i><span>Leads</span>
+                                </a>
+                                <ul class="dropdown-menu shadow" aria-labelledby="leadsDropdown">
+                                    <li><a class="dropdown-item" href="{% url 'lead_generation:dashboard' %}"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a></li>
+                                    {% if user.role == 'salesperson' %}
+                                        <li><a class="dropdown-item" href="{% url 'lead_generation:my_leads' %}"><i class="fas fa-user-tag me-2"></i>My Leads</a></li>
+                                    {% else %}
+                                        <li><a class="dropdown-item" href="{% url 'lead_generation:lead_list' %}"><i class="fas fa-list me-2"></i>All Leads</a></li>
+                                    {% endif %}
+                                    <li><a class="dropdown-item" href="{% url 'lead_generation:hot_leads' %}"><i class="fas fa-fire text-danger me-2"></i>Hot Leads</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    {% if user.role == 'salesperson' %}
+                                        <li><a class="dropdown-item" href="{% url 'lead_generation:lead_create' %}"><i class="fas fa-plus me-2"></i>Add New Lead</a></li>
+                                    {% endif %}
+                                    {% if user.role in 'supervisor,teamlead,asm,avp,admin,president,gm,vp,marketing' %}
+                                        <li><a class="dropdown-item" href="{% url 'lead_generation:analytics' %}"><i class="fas fa-chart-pie me-2"></i>Analytics</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'lead_generation:lead_sources' %}"><i class="fas fa-bullhorn me-2"></i>Lead Sources</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'lead_generation:lead_import' %}"><i class="fas fa-file-import me-2"></i>Import Leads</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'lead_generation:lead_import_template' %}"><i class="fas fa-download me-2"></i>Import Template</a></li>
+                                    {% endif %}
+                                </ul>
+                            </li>
+                        {% endif %}
+                        {% if user.role in 'salesperson,supervisor,teamlead,asm,avp,admin,president,gm,vp,technical_sales,techmgr,asst_techmgr' %}
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="salesFunnelDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Sales Funnel">
+                                    <i class="fas fa-filter"></i><span>Funnel</span>
+                                </a>
+                                <ul class="dropdown-menu shadow" aria-labelledby="salesFunnelDropdown">
+                                    <li><a class="dropdown-item" href="{% url 'sales_funnel:dashboard' %}"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a></li>
+                                    <li><a class="dropdown-item" href="{% url 'sales_funnel:deals_history' %}"><i class="fas fa-history me-2"></i>Deals History</a></li>
+                                    <li><a class="dropdown-item" href="{% url 'sales_funnel:removed_entries' %}"><i class="fas fa-box-archive me-2"></i>Removed Entries</a></li>
+                                    {% if user.role in 'admin,gm,vp,avp' %}
+                                    <li><a class="dropdown-item" href="{% url 'sales_monitoring:fiscal_year_comparison' %}"><i class="fas fa-scale-balanced me-2"></i>Fiscal Year Comparison</a></li>
+                                    {% endif %}
+                                    {% if user.role in 'salesperson,supervisor,asm,avp' %}
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item" href="{% url 'sales_funnel:add_entry' %}"><i class="fas fa-plus me-2"></i>Add New Entry</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'sales_funnel:add_test_entry' %}"><i class="fas fa-flask me-2"></i>Add Test Entry</a></li>
+                                    {% endif %}
+                                    {% if user.role in 'admin,president,gm,vp' %}
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-danger" href="{% url 'sales_funnel:clear_stage' %}"><i class="fas fa-broom me-2"></i>Clear Stage...</a></li>
+                                    {% endif %}
+                                </ul>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'proposal_list' %}" title="Proposals">
+                                    <i class="fas fa-file-invoice-dollar"></i><span>Proposals</span>
+                                </a>
+                            </li>
+                        {% endif %}
+                        {% if user.role in 'salesperson,avp,supervisor,teamlead,asm,admin,president,gm,vp,technical_sales,techmgr,asst_techmgr' %}
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="salesMonitoringDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Monitoring">
+                                    <i class="fas fa-desktop"></i><span>Monitoring</span>
+                                </a>
+                                <ul class="dropdown-menu shadow" aria-labelledby="salesMonitoringDropdown">
+                                    <li><a class="dropdown-item" href="{% url 'sales_monitoring:dashboard' %}"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a></li>
+                                    {% if user.role in 'admin,president,gm,vp' %}
+                                        <li><a class="dropdown-item" href="{% url 'sales_monitoring:executive_dashboard' %}"><i class="fas fa-crown me-2"></i>Executive Dashboard</a></li>
+                                    {% endif %}
+                                    {% if user.role in 'avp,admin,president,gm,vp' %}
+                                        <li><a class="dropdown-item" href="{% url 'sales_monitoring:team_performance' %}"><i class="fas fa-users me-2"></i>Team Performance</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'sales_monitoring:pipeline_intelligence' %}"><i class="fas fa-magnifying-glass-chart me-2"></i>Pipeline Intelligence</a></li>
+                                    {% endif %}
+                                    {% if user.role in 'supervisor,asm,teamlead' %}
+                                        <li><a class="dropdown-item" href="{% url 'sales_monitoring:group_performance' %}"><i class="fas fa-user-friends me-2"></i>Group Performance</a></li>
+                                    {% endif %}
+				    {% if user.role in 'supervisor,teamlead,asm,avp,admin,president,gm,vp' %}
+                                    <li><a class="dropdown-item" href="{% url 'sales_monitoring:activity_reports' %}"><i class="fas fa-clipboard-list me-2"></i>Reports</a></li>
+				    {% endif %}
+                                    <li><a class="dropdown-item" href="{% url 'warehouse:dashboard' %}"><i class="fas fa-truck-fast me-2"></i>Warehouse Deliveries</a></li>
+                                </ul>
+                            </li>
+                        {% endif %}
+                        {% if user.role == 'operation_mgr' or user.role == 'purchasing' or user.role == 'purchasing_supervisor' %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="warehouseDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Warehouse">
+                                <i class="fas fa-warehouse"></i><span>Warehouse</span>
+                            </a>
+                            <ul class="dropdown-menu shadow" aria-labelledby="warehouseDropdown">
+                                <li><a class="dropdown-item" href="{% url 'warehouse:dashboard' %}"><i class="fas fa-truck-fast me-2"></i>Delivery Board</a></li>
+                                <li><a class="dropdown-item" href="{% url 'warehouse:history' %}"><i class="fas fa-clock-rotate-left me-2"></i>Delivery History</a></li>
+                            </ul>
+                        </li>
+                        {% endif %}
+                        {% if user.role == 'admin' or user.role == 'purchasing' or user.role == 'purchasing_supervisor' or user.role == 'operation_mgr' %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="purchasingDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Purchasing">
+                                <i class="fas fa-cart-shopping"></i><span>Purchasing</span>
+                            </a>
+                            <ul class="dropdown-menu shadow" aria-labelledby="purchasingDropdown">
+                                <li><a class="dropdown-item" href="{% url 'purchasing:dashboard' %}"><i class="fas fa-gauge-high me-2"></i>Dashboard</a></li>
+                                <li><a class="dropdown-item" href="{% url 'purchasing:supplier_list' %}"><i class="fas fa-industry me-2"></i>Suppliers</a></li>
+                                <li><a class="dropdown-item" href="{% url 'purchasing:product_list' %}"><i class="fas fa-boxes-stacked me-2"></i>Products</a></li>
+                                <li><a class="dropdown-item" href="{% url 'purchasing:pricelist_import' %}"><i class="fas fa-file-import me-2"></i>Import Price List</a></li>
+                            </ul>
+                        </li>
+                        {% endif %}
+                        {% if user.role in 'admin,marketing' %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="massMailingDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Mass Mailing">
+                                <i class="fas fa-paper-plane"></i><span>Mass Mailing</span>
+                            </a>
+                            <ul class="dropdown-menu shadow" aria-labelledby="massMailingDropdown">
+                                <li><a class="dropdown-item" href="{% url 'mass_mailing:campaign_list' %}"><i class="fas fa-paper-plane me-2"></i>Campaigns</a></li>
+                                <li><a class="dropdown-item" href="{% url 'mass_mailing:media_library' %}"><i class="fas fa-photo-film me-2"></i>Media Library</a></li>
+                                <li><a class="dropdown-item" href="{% url 'mass_mailing:announcement_list' %}"><i class="fas fa-bullhorn me-2"></i>Announcements &amp; Events</a></li>
+                            </ul>
+                        </li>
+                        {% elif user.role == 'purchasing' or user.role == 'purchasing_supervisor' or user.role == 'operation_mgr' %}
+                        {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'mass_mailing:campaign_list' %}" title="Mass Mailing">
+                                <i class="fas fa-paper-plane"></i><span>Mass Mailing</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {# Company-wide Marketing announcements/events — visible to all roles #}
+                        <li class="nav-item">
+                            <a class="nav-link position-relative" href="{% url 'mass_mailing:announcement_feed' %}" title="Announcements &amp; Events">
+                                <i class="fas fa-bullhorn"></i><span>Announcements</span>
+                                {% if marketing_updates_count %}
+                                <span class="badge rounded-pill bg-danger" style="font-size:0.6rem;">{{ marketing_updates_count }}</span>
+                                {% endif %}
+                            </a>
+                        </li>
+                        {% if user.role in 'admin,president,gm,vp,avp' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'missions_list' %}" title="Missions">
+                                <i class="fas fa-list-check"></i><span>Missions</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if user.role in 'admin,president,gm,vp,avp,asm,techmgr,asst_techmgr' %}
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="teamsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Teams">
+                                    <i class="fas fa-sitemap"></i><span>Teams</span>
+                                </a>
+                                <ul class="dropdown-menu shadow" aria-labelledby="teamsDropdown">
+                                    <li><a class="dropdown-item" href="{% url 'team_list' %}"><i class="fas fa-network-wired me-2"></i>All Teams</a></li>
+                                    {% if user.role in 'admin,president,gm,vp' %}
+                                        <li><a class="dropdown-item" href="{% url 'create_team' %}"><i class="fas fa-plus-square me-2"></i>Create Team</a></li>
+                                    {% endif %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{% url 'group_list' %}"><i class="fas fa-layer-group me-2"></i>All Groups</a></li>
+                                    {% if user.role in 'admin,avp,asm,supervisor' %}
+                                        <li><a class="dropdown-item" href="{% url 'create_group' %}"><i class="fas fa-plus-circle me-2"></i>Create Group</a></li>
+                                    {% endif %}
+                                </ul>
+                            </li>
+                        {% endif %}
+                        {% if user.role == 'avp' or user.role == 'admin' or user.role == 'president' or user.role == 'gm' or user.role == 'vp' %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'quota_management' %}" title="Quota Management">
+                                    <i class="fas fa-chart-pie text-warning"></i><span>Quotas</span>
+                                </a>
+                            </li>
+                        {% endif %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="filesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Files">
+                                <i class="fas fa-folder"></i><span>Files</span>
+                            </a>
+                            <ul class="dropdown-menu shadow" aria-labelledby="filesDropdown">
+                                <li><a class="dropdown-item" href="{% url 'company_files' %}"><i class="fas fa-globe me-2"></i>Company Shared</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'all_files' %}"><i class="fas fa-folder-open me-2"></i>All Group Files</a></li>
+                                <li><a class="dropdown-item" href="{% url 'my_files' %}"><i class="fas fa-user me-2"></i>My Uploaded Files</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'quick_upload' %}"><i class="fas fa-upload me-2"></i>Quick Upload</a></li>
+                                <li><a class="dropdown-item" href="{% url 'upload_selector' %}"><i class="fas fa-plus-circle me-2"></i>Upload to Group...</a></li>
+                            </ul>
+                        </li>
+                        {% if user.role == 'admin' %}
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="usersDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="User Management">
+                                    <i class="fas fa-users-cog"></i><span>Users</span>
+                                </a>
+                                <ul class="dropdown-menu shadow" aria-labelledby="usersDropdown">
+                                    <li><a class="dropdown-item" href="{% url 'user_management' %}"><i class="fas fa-users me-2"></i>Manage Users</a></li>
+                                    <li><a class="dropdown-item" href="{% url 'create_user' %}"><i class="fas fa-user-plus me-2"></i>Create User</a></li>
+                                </ul>
+                            </li>
+                        {% endif %}
+                        {% if user.role in 'asm,avp' %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'create_salesperson' %}" title="Create Account Manager">
+                                    <i class="fas fa-user-tie"></i><span>Add AM</span>
+                                </a>
+                            </li>
+                        {% endif %}
+                      {% endif %}
+                    {% endif %}
+                </ul>
+                {% if user.is_authenticated and user.role != 'warehouse' %}
+                <form class="nav-global-search d-flex mx-lg-3 my-2 my-lg-0" method="get" action="{% url 'global_search' %}" role="search">
+                    <div class="nav-search-wrap">
+                        <i class="fas fa-search nav-search-icon"></i>
+                        <input type="search" name="q" class="form-control nav-search-input"
+                               value="{{ request.GET.q|default:'' }}"
+                               placeholder="Search proposals, customers, funnel…"
+                               aria-label="Search" autocomplete="off">
+                        <a href="{% url 'global_search' %}" class="nav-search-help" tabindex="0"
+                           title="Search by proposal/reference number, customer, funnel entry{% if user.role in 'admin,vp' %}, or user{% endif %}."
+                           aria-label="Search help">
+                            <i class="fas fa-question-circle"></i>
+                        </a>
+                    </div>
+                </form>
+                {% endif %}
+                <ul class="navbar-nav ms-auto align-items-center">
+                    {% if user.is_authenticated %}
+                        {% if user.role in 'admin,avp,gm,vp,salesperson,supervisor,asm,sm,marketing' or customer_request_notification_count or proposal_approval_notification_count or marketing_updates_count %}
+                        <li class="nav-item dropdown me-2">
+                            <a class="nav-link position-relative" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
+                                <i class="fas fa-bell"></i>
+                                {% with total_notification_count=customer_request_notification_count|add:proposal_approval_notification_count|add:marketing_updates_count %}
+                                {% if total_notification_count %}
+                                <span class="badge rounded-pill bg-danger notification-badge">{{ total_notification_count }}</span>
+                                {% endif %}
+                                {% endwith %}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end shadow notification-menu" aria-labelledby="notificationsDropdown">
+                                {% if customer_request_notifications %}
+                                <li><h6 class="dropdown-header">Customer Request Notifications</h6></li>
+                                {% for item in customer_request_notifications %}
+                                <li>
+                                    <a class="dropdown-item notification-item" href="{% url item.url_name %}">
+                                        <div class="fw-bold">{{ item.title }}</div>
+                                        <div class="small text-muted">{{ item.message }}</div>
+                                        <div class="small {% if item.status == 'rejected' %}text-danger{% elif item.status == 'approved' %}text-success{% else %}text-warning{% endif %}">
+                                            {{ item.timestamp|date:"M d, Y H:i" }}
+                                        </div>
+                                    </a>
+                                </li>
+                                {% endfor %}
+                                {% if proposal_approval_notifications %}
+                                <li><hr class="dropdown-divider"></li>
+                                {% endif %}
+                                {% endif %}
+
+                                {% if proposal_approval_notifications %}
+                                <li><h6 class="dropdown-header">Proposal Approval Notifications</h6></li>
+                                {% for item in proposal_approval_notifications %}
+                                <li>
+                                    <a class="dropdown-item notification-item" href="{{ item.url }}">
+                                        <div class="fw-bold">{{ item.title }}</div>
+                                        <div class="small text-muted">{{ item.message }}</div>
+                                        <div class="small text-warning">
+                                            {{ item.timestamp|date:"M d, Y H:i" }}
+                                        </div>
+                                    </a>
+                                </li>
+                                {% endfor %}
+                                {% endif %}
+
+                                {% if marketing_updates %}
+                                {% if customer_request_notifications or proposal_approval_notifications %}
+                                <li><hr class="dropdown-divider"></li>
+                                {% endif %}
+                                <li><h6 class="dropdown-header">Marketing Updates</h6></li>
+                                {% for item in marketing_updates %}
+                                <li>
+                                    <a class="dropdown-item notification-item" href="{% url 'mass_mailing:announcement_feed' %}">
+                                        <div class="fw-bold">
+                                            <span class="badge {{ item.badge_class }} me-1">{{ item.type_label }}</span>{{ item.title }}
+                                            {% if item.is_new %}<span class="badge bg-danger ms-1">New</span>{% endif %}
+                                        </div>
+                                        {% if item.event_date %}
+                                        <div class="small text-muted"><i class="fas fa-clock me-1"></i>{{ item.event_date|date:"M d, Y H:i" }}</div>
+                                        {% endif %}
+                                        <div class="small text-muted">{{ item.timestamp|date:"M d, Y H:i" }}</div>
+                                    </a>
+                                </li>
+                                {% endfor %}
+                                {% endif %}
+
+                                {% if not customer_request_notifications and not proposal_approval_notifications and not marketing_updates %}
+                                <li><span class="dropdown-item-text text-muted">No notifications.</span></li>
+                                {% endif %}
+
+                                {% if customer_request_notifications or proposal_approval_notifications or marketing_updates %}
+                                <li><hr class="dropdown-divider"></li>
+                                {% endif %}
+                                {% if customer_request_notifications %}
+                                <li>
+                                    {% if user.role == 'salesperson' %}
+                                    <a class="dropdown-item" href="{% url 'customer_create_request_history' %}">
+                                        <i class="fas fa-history me-2"></i>View My Request History
+                                    </a>
+                                    {% else %}
+                                    <a class="dropdown-item" href="{% url 'customer_create_requests' %}">
+                                        <i class="fas fa-inbox me-2"></i>View Pending Requests
+                                    </a>
+                                    {% endif %}
+                                </li>
+                                {% endif %}
+                                {% if proposal_approval_notifications %}
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'approvals_inbox' %}">
+                                        <i class="fas fa-check-circle me-2"></i>View Proposal Approvals
+                                    </a>
+                                </li>
+                                {% endif %}
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'mass_mailing:announcement_feed' %}">
+                                        <i class="fas fa-bullhorn me-2"></i>View Announcements &amp; Events
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        {% endif %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                {% if user.profile_picture %}
+                                    <img src="{{ user.profile_picture.url }}" alt="{{ user.username }}" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
+                                {% else %}
+                                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+                                        {{ user.initials|default:user.username|make_list|first|upper }}
+                                    </div>
+                                {% endif %}
+                                <div class="d-flex flex-column align-items-start">
+                                    <span class="fw-bold">{{ user.username }}</span>
+                                    <span class="badge bg-warning text-dark" style="font-size: 0.7rem;">Lvl {{ user_level }} • {{ user_points }} pts</span>
+                                </div>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown">
+                                <li><h6 class="dropdown-header">
+                                    {% if user.job_title %}{{ user.get_job_title_display }}{% elif user.role in 'president,gm,vp' %}Executive{% else %}{{ user.get_role_display }}{% endif %}
+                                </h6></li>
+                                <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="fas fa-user-circle me-2"></i>My Profile</a></li>
+                                <li><a class="dropdown-item" href="{% url 'leaderboard' %}"><i class="fas fa-trophy me-2"></i>Leaderboard</a></li>
+                                <li><a class="dropdown-item" href="{% url 'badges' %}"><i class="fas fa-medal me-2"></i>My Badges</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'account_change_password' %}"><i class="fas fa-key me-2"></i>Change Password</a></li>
+                                <li><a class="dropdown-item" href="{% url 'mfa_index' %}"><i class="fas fa-shield-alt me-2"></i>MFA Settings</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="post" action="{% url 'logout' %}" class="m-0">
+                                        {% csrf_token %}
+                                        <button type="submit" class="dropdown-item text-danger"><i class="fas fa-sign-out-alt me-2"></i>Logout</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item"><a class="nav-link" href="{% url 'login' %}"><i class="fas fa-sign-in-alt me-2"></i><span>Login</span></a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center py-3 mt-5 border-top bg-light">
+        <small class="text-muted">
+            &copy; {% now "Y" %} Micro Image International Corp. | Serving the IT Industry since 1997 &mdash; <span id="years-service"></span> years of excellence.
+        </small>
+    </footer>
+    <script>document.getElementById('years-service').textContent = new Date().getFullYear() - 1997;</script>
+
+    {% if user.is_authenticated %}
+    <!-- Pull-to-refresh indicator (mobile only, hidden >=769px via CSS) -->
+    <div class="m-ptr" id="mPtr" aria-hidden="true"><i class="fas fa-arrow-down"></i></div>
+
+    <!-- Thumb-zone bottom tab bar (mobile only). Mirrors real nav destinations. -->
+    <nav class="m-tabbar" id="mTabbar" aria-label="Primary">
+        {% if user.role == 'warehouse' %}
+        <a class="m-tabbar__item" href="{% url 'warehouse:dashboard' %}"><i class="fas fa-truck-fast"></i><span>Deliveries</span></a>
+        <a class="m-tabbar__item" href="{% url 'warehouse:history' %}"><i class="fas fa-clock-rotate-left"></i><span>History</span></a>
+        {% else %}
+        {% if user.role in 'avp,admin,president,gm,vp,salesperson,supervisor,teamlead,asm,marketing,technical_sales,techmgr,asst_techmgr' %}
+        <a class="m-tabbar__item" href="{% url 'customer_list' %}"><i class="fas fa-users"></i><span>Customers</span></a>
+        {% endif %}
+        {% if user.role in 'salesperson,supervisor,teamlead,asm,avp,admin,president,gm,vp,technical_sales,techmgr,asst_techmgr' %}
+        <a class="m-tabbar__item" href="{% url 'sales_funnel:dashboard' %}"><i class="fas fa-filter"></i><span>Funnel</span></a>
+        {% endif %}
+        {% if user.role in 'salesperson,supervisor,teamlead,asm,avp,admin,president,gm,vp,technical_sales,techmgr,asst_techmgr' %}
+        <a class="m-tabbar__item" href="{% url 'proposal_list' %}"><i class="fas fa-file-invoice-dollar"></i><span>Proposals</span></a>
+        {% endif %}
+        {% if user.role in 'salesperson,avp,supervisor,teamlead,asm,admin,president,gm,vp,technical_sales,techmgr,asst_techmgr' %}
+        <a class="m-tabbar__item" href="{% url 'sales_monitoring:dashboard' %}"><i class="fas fa-desktop"></i><span>Monitor</span></a>
+        {% endif %}
+        {% endif %}
+        <a class="m-tabbar__item" href="{% url 'profile' %}"><i class="fas fa-user-circle"></i><span>Me</span></a>
+    </nav>
+    {% endif %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Mobile-native interaction controller (tab-bar active state, pull-to-refresh, swipe-to-action) -->
+    <script>
+    (function () {
+        var MOBILE = window.matchMedia('(max-width: 768px)');
+        if (!MOBILE.matches) return;
+
+        /* --- Bottom tab bar: highlight the item matching the current path --- */
+        (function () {
+            var bar = document.getElementById('mTabbar');
+            if (!bar) return;
+            var here = window.location.pathname.replace(/\/+$/, '') || '/';
+            var best = null, bestLen = -1;
+            bar.querySelectorAll('.m-tabbar__item').forEach(function (a) {
+                var p = (a.getAttribute('href') || '').replace(/\/+$/, '') || '/';
+                if (p !== '/' && here.indexOf(p) === 0 && p.length > bestLen) {
+                    best = a; bestLen = p.length;
+                } else if (p === here) {
+                    best = a; bestLen = p.length;
+                }
+            });
+            if (best) best.classList.add('is-active');
+        })();
+
+        /* --- Pull-to-refresh: only fires at scroll-top, on downward drag --- */
+        (function () {
+            var ptr = document.getElementById('mPtr');
+            if (!ptr) return;
+            var startY = 0, pulling = false, dist = 0;
+            var THRESHOLD = 70;
+            var icon = ptr.querySelector('i');
+
+            window.addEventListener('touchstart', function (e) {
+                if (window.scrollY <= 0 && e.touches.length === 1) {
+                    startY = e.touches[0].clientY;
+                    pulling = true;
+                    dist = 0;
+                }
+            }, { passive: true });
+
+            window.addEventListener('touchmove', function (e) {
+                if (!pulling) return;
+                dist = e.touches[0].clientY - startY;
+                if (dist > 0 && window.scrollY <= 0) {
+                    var pct = Math.min(dist / THRESHOLD, 1);
+                    ptr.classList.add('is-visible');
+                    ptr.style.transform = 'translateY(' + (pct * 8) + 'px) scale(' + (0.6 + pct * 0.4) + ')';
+                    if (icon) icon.style.transform = 'rotate(' + (pct * 180) + 'deg)';
+                }
+            }, { passive: true });
+
+            window.addEventListener('touchend', function () {
+                if (!pulling) return;
+                pulling = false;
+                if (dist >= THRESHOLD) {
+                    ptr.classList.add('is-loading');
+                    if (icon) { icon.className = 'fas fa-spinner'; }
+                    ptr.style.transform = '';
+                    setTimeout(function () { window.location.reload(); }, 350);
+                } else {
+                    ptr.classList.remove('is-visible');
+                    ptr.style.transform = '';
+                    if (icon) icon.style.transform = '';
+                }
+            }, { passive: true });
+        })();
+
+        /* --- Swipe-to-action: opt-in via .m-swipe wrapper. Reveals hidden actions. --- */
+        (function () {
+            var items = document.querySelectorAll('.m-swipe');
+            if (!items.length) return;
+            items.forEach(function (item) {
+                var content = item.querySelector('.m-swipe__content');
+                if (!content) return;
+                var startX = 0, dx = 0, active = false;
+
+                content.addEventListener('touchstart', function (e) {
+                    startX = e.touches[0].clientX; dx = 0; active = true;
+                }, { passive: true });
+
+                content.addEventListener('touchmove', function (e) {
+                    if (!active) return;
+                    dx = e.touches[0].clientX - startX;
+                }, { passive: true });
+
+                content.addEventListener('touchend', function () {
+                    if (!active) return;
+                    active = false;
+                    if (dx < -40) item.classList.add('is-open');       // swipe left -> reveal
+                    else if (dx > 40) item.classList.remove('is-open'); // swipe right -> close
+                }, { passive: true });
+            });
+            // Tap elsewhere closes any open swipe row
+            document.addEventListener('touchstart', function (e) {
+                if (e.target.closest('.m-swipe')) return;
+                document.querySelectorAll('.m-swipe.is-open').forEach(function (el) {
+                    el.classList.remove('is-open');
+                });
+            }, { passive: true });
+        })();
+    })();
+    </script>
+    {# ---- About dialog (hidden) ---- #}
+    {% include "core/_about_modal.html" %}
+
+    <script src="{% static 'core/js/about-modal.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+    {% include "includes/miiciq_widget.html" with miiciq_url="https://miiciq.microimageph.net" mode="new_tab" %}
+</body>
+</html>

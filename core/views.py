@@ -1,0 +1,247 @@
+# -----------------------------------------------------------------------------
+# 5. core/views.py (for handling login, logout, and home page)
+# -----------------------------------------------------------------------------
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import logout
+from django.views.decorators.http import require_POST
+from django.contrib import messages
+from django.db.models import Sum, Q
+from django.utils import timezone
+from django.conf import settings
+from datetime import timedelta
+from users.models import User
+from gamification.models import UserMissionProgress
+from gamification.utils import generate_daily_missions, generate_weekly_missions, get_current_week_start
+from mass_mailing.models import Campaign, CampaignRecipient, MediaLibraryAsset, Announcement
+
+@login_required
+def home(request):
+    user = request.user
+
+    # Warehouse staff are soft-locked to the warehouse app, so send them
+    # straight to the delivery board instead of rendering the home page.
+    if getattr(user, 'role', None) == 'warehouse':
+        return redirect('warehouse:dashboard')
+
+    context = {'user': user}
+    
+    # Gamification: Get Daily Missions
+    today = timezone.now().date()
+    week_start = get_current_week_start(today)
+
+    generate_daily_missions(user)
+    generate_weekly_missions(user)
+
+    my_missions = UserMissionProgress.objects.filter(
+        user=user
+    ).filter(
+        Q(mission__mission_type='daily', date_assigned=today) |
+        Q(mission__mission_type='weekly', date_assigned=week_start)
+    ).select_related('mission').order_by('mission__mission_type', 'mission__title')
+    
+    context['my_missions'] = my_missions
+    
+    # Add sales funnel data for any role allowed to access the funnel module.
+    # Reuse the shared helper so the home page stays in sync with the funnel
+    # dashboard's role scoping, including Technical Sales and Technical Managers.
+    from sales_funnel.views import can_access_funnel, can_add_entry, visible_funnel_entries
+
+    if can_access_funnel(user):
+        funnel_entries = visible_funnel_entries(user)
+        
+        # Calculate funnel statistics
+        funnel_stats = {
+            'quoted_count': funnel_entries.filter(stage='quoted').count(),
+            'closable_count': funnel_entries.filter(stage='closable').count(),
+            'project_count': funnel_entries.filter(stage='project').count(),
+            'services_count': funnel_entries.filter(stage='services').count(),
+            'total_value': funnel_entries.aggregate(Sum('retail'))['retail__sum'] or 0,
+            'total_entries': funnel_entries.count(),
+        }
+        
+        # Get recent entries for quick view (limit to 5)
+        recent_entries = funnel_entries.select_related('salesperson', 'customer').order_by('-date_created')[:5]
+        
+        context.update({
+            'funnel_stats': funnel_stats,
+            'recent_funnel_entries': recent_entries,
+            'show_funnel': True,
+            'can_add_funnel': can_add_entry(user),
+        })
+    
+    # ------------------------------------------------------------------
+    # Marketing Officer Dashboard
+    # ------------------------------------------------------------------
+    if user.role == 'marketing':
+        campaigns = Campaign.objects.all()
+        recipients = CampaignRecipient.objects.all()
+
+        sent_count = recipients.filter(status='sent').count()
+        failed_count = recipients.filter(status='failed').count()
+        interested_count = recipients.filter(interested_at__isnull=False).count()
+        campaigns_sent = campaigns.filter(status='completed').count()
+
+        # Interest rate = interested clicks / successfully sent emails.
+        interest_rate = round((interested_count / sent_count) * 100, 1) if sent_count else 0
+
+        # Recent campaigns (annotate each with its interested-click count)
+        from django.db.models import Count
+        recent_campaigns = campaigns.order_by('-created_at').annotate(
+            interested_clicks=Count('recipients', filter=Q(recipients__interested_at__isnull=False))
+        )[:5]
+
+        # Recently added media / EDMs in the library
+        recent_media = MediaLibraryAsset.objects.order_by('-created_at')[:5]
+
+        # Recent "Interested" clicks to follow up on
+        recent_interested = (
+            recipients.filter(interested_at__isnull=False)
+            .select_related('campaign', 'customer')
+            .order_by('-interested_at')[:6]
+        )
+
+        # Announcements & upcoming events (active only)
+        active_announcements = Announcement.objects.filter(is_active=True)
+        upcoming_events = active_announcements.filter(
+            announcement_type='event', event_date__gte=timezone.now()
+        ).order_by('event_date')[:5]
+        recent_announcements = active_announcements.exclude(
+            announcement_type='event', event_date__gte=timezone.now()
+        ).order_by('-created_at')[:5]
+
+        context.update({
+            'show_marketing_dashboard': True,
+            'mkt_stats': {
+                'campaigns_sent': campaigns_sent,
+                'total_campaigns': campaigns.count(),
+                'sent_count': sent_count,
+                'failed_count': failed_count,
+                'interested_count': interested_count,
+                'interest_rate': interest_rate,
+            },
+            'mkt_recent_campaigns': recent_campaigns,
+            'mkt_recent_media': recent_media,
+            'mkt_recent_interested': recent_interested,
+            'mkt_upcoming_events': upcoming_events,
+            'mkt_recent_announcements': recent_announcements,
+            'mkt_can_manage_announcements': True,
+        })
+
+    # ------------------------------------------------------------------
+    # Active Users Widget (admin-only)
+    # ------------------------------------------------------------------
+    if user.role == 'admin':
+        threshold_minutes = getattr(settings, 'ONLINE_THRESHOLD_MINUTES', 15)
+        cutoff = timezone.now() - timedelta(minutes=threshold_minutes)
+
+        active_users = (
+            User.objects
+            .filter(last_activity__gte=cutoff, is_active=True)
+            .exclude(pk=user.pk)           # exclude self
+            .select_related()
+            .order_by('-last_activity')
+        )
+
+        context.update({
+            'active_users': active_users,
+            'active_users_count': active_users.count(),
+            'online_threshold_minutes': threshold_minutes,
+        })
+
+    # Latest from Marketing — company-wide announcements/events for the home card.
+    # (Announcement is imported at module top; no local import — that would make
+    # the name a function-local and break the marketing branch above.)
+    context['latest_announcements'] = list(
+        Announcement.objects.filter(is_active=True)
+        .select_related('created_by')
+        .order_by('-created_at')[:4]
+    )
+
+    return render(request, 'core/home.html', context)
+
+@require_POST
+def logout_view(request):
+    # POST-only: a GET-accessible logout can be triggered by any third-party
+    # page (e.g. <img src=".../logout/">), logging users out without consent.
+    logout(request)
+    messages.success(request, 'You have been successfully logged out.')
+    return redirect('login')
+
+
+# -----------------------------------------------------------------------------
+# Global navbar search
+# -----------------------------------------------------------------------------
+# Searches four entity types, each scoped to what the current user may see by
+# reusing the existing per-app visibility helpers (so the search never leaks a
+# record the user couldn't otherwise reach). Users are only searchable by roles
+# that can manage users (admin/vp), matching the user-management permission gate.
+SEARCH_RESULT_LIMIT = 8
+USER_SEARCH_ROLES = {'admin', 'vp'}
+
+
+@login_required
+def global_search(request):
+    from customers.permissions import visible_customers_queryset
+    from sales_funnel.views import visible_funnel_entries
+    from sales_proposals.views import visible_proposals_queryset
+
+    query = (request.GET.get('q') or '').strip()
+    user = request.user
+
+    proposals = customers = funnel_entries = users = []
+    counts = {'proposals': 0, 'customers': 0, 'funnel': 0, 'users': 0}
+
+    if query:
+        # Proposals — by proposal #, reference #, subject, or customer company.
+        proposal_qs = visible_proposals_queryset(user).filter(
+            Q(proposal_number__icontains=query)
+            | Q(reference_number__icontains=query)
+            | Q(subject__icontains=query)
+            | Q(customer__company_name__icontains=query)
+        ).select_related('customer', 'created_by').order_by('-date')
+        counts['proposals'] = proposal_qs.count()
+        proposals = list(proposal_qs[:SEARCH_RESULT_LIMIT])
+
+        # Customers — by company, contact person, or email.
+        customer_qs = visible_customers_queryset(user).filter(
+            Q(company_name__icontains=query)
+            | Q(contact_person_name__icontains=query)
+            | Q(email__icontains=query)
+        ).select_related('salesperson').order_by('company_name')
+        counts['customers'] = customer_qs.count()
+        customers = list(customer_qs[:SEARCH_RESULT_LIMIT])
+
+        # Funnel entries — by company, brand, or requirement description.
+        funnel_qs = visible_funnel_entries(user).filter(
+            Q(company_name__icontains=query)
+            | Q(brand__icontains=query)
+            | Q(requirement_description__icontains=query)
+        ).select_related('salesperson', 'customer', 'proposal').order_by('-date_created')
+        counts['funnel'] = funnel_qs.count()
+        funnel_entries = list(funnel_qs[:SEARCH_RESULT_LIMIT])
+
+        # Users — only for roles permitted to view user management.
+        if user.role in USER_SEARCH_ROLES:
+            user_qs = User.objects.filter(
+                Q(username__icontains=query)
+                | Q(first_name__icontains=query)
+                | Q(last_name__icontains=query)
+                | Q(email__icontains=query)
+                | Q(initials__icontains=query)
+            ).order_by('first_name', 'last_name', 'username')
+            counts['users'] = user_qs.count()
+            users = list(user_qs[:SEARCH_RESULT_LIMIT])
+
+    context = {
+        'query': query,
+        'proposals': proposals,
+        'customers': customers,
+        'funnel_entries': funnel_entries,
+        'users': users,
+        'counts': counts,
+        'result_limit': SEARCH_RESULT_LIMIT,
+        'total_results': sum(counts.values()),
+        'can_search_users': user.role in USER_SEARCH_ROLES,
+    }
+    return render(request, 'core/search_results.html', context)

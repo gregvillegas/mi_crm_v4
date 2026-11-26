@@ -1,0 +1,25 @@
+from django.urls import path
+from . import views
+
+app_name = 'mass_mailing'
+
+urlpatterns = [
+    path('', views.campaign_list, name='campaign_list'),
+    path('media-library/', views.media_library, name='media_library'),
+    path('announcements/feed/', views.announcement_feed, name='announcement_feed'),
+    path('announcements/', views.announcement_list, name='announcement_list'),
+    path('announcements/create/', views.announcement_create, name='announcement_create'),
+    path('announcements/<int:pk>/edit/', views.announcement_edit, name='announcement_edit'),
+    path('announcements/<int:pk>/delete/', views.announcement_delete, name='announcement_delete'),
+    path('announcements/<int:pk>/toggle/', views.announcement_toggle, name='announcement_toggle'),
+    path('create/', views.campaign_create, name='campaign_create'),
+    path('<int:pk>/', views.campaign_detail, name='campaign_detail'),
+    path('<int:pk>/edit/', views.campaign_edit, name='campaign_edit'),
+    path('<int:pk>/cancel/', views.campaign_cancel, name='campaign_cancel'),
+    path('<int:pk>/preview/', views.campaign_preview, name='campaign_preview'),
+    path('<int:pk>/send/', views.campaign_send, name='campaign_send'),
+    path('<int:pk>/interested-list/', views.interested_recipients_list, name='interested_recipients_list'),
+    path('unsubscribe/<uuid:recipient_id>/', views.unsubscribe, name='unsubscribe'),
+    path('interested/<uuid:recipient_id>/', views.interested, name='interested'),
+    path('interested/<uuid:recipient_id>/submit/', views.submit_inquiry, name='submit_inquiry'),
+]

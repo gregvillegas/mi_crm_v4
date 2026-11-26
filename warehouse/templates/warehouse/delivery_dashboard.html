@@ -1,0 +1,889 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    /* Section header colours mirror the Excel colour coding. */
+    .card-header.section-purple { background-color: #7030A0; color: #fff; font-weight: 600; }
+    .card-header.section-yellow { background-color: #FFC000; color: #3b2f00; font-weight: 600; }
+    .card-header.section-green  { background-color: #28A745; color: #fff; font-weight: 600; }
+
+    /* Pending / failed deliveries flag their remarks in bold red. */
+    .remarks-urgent { color: #dc3545; font-weight: 700; }
+
+    .delivery-table td { transition: background-color 1.2s ease-out; }
+    /* Brief highlight when a row arrives or moves between sections. */
+    .delivery-table tr.row-flash td { background-color: #d4f8d4 !important; }
+
+    .van-details { background-color: #fffbe6; }
+    
+    .card-header input[type="date"] {
+        border: 1px solid rgba(0,0,0,0.1);
+        border-radius: 4px;
+        padding: 1px 6px;
+        font-size: 0.875rem;
+        background-color: rgba(255,255,255,0.8);
+    }
+    .section-yellow input[type="date"] { background-color: #fff; color: #3b2f00; }
+    .section-green input[type="date"] { background-color: #fff; color: #155724; }
+    .section-header-main,
+    .section-header-tools {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .section-header-tools {
+        justify-content: flex-end;
+    }
+    .scheduled-import-form {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        margin: 0;
+    }
+    .scheduled-import-form .btn {
+        white-space: nowrap;
+    }
+    .scheduled-import-input {
+        display: none;
+    }
+    @media (max-width: 768px) {
+        .section-header-tools {
+            justify-content: flex-start;
+            width: 100%;
+        }
+        .scheduled-import-form {
+            width: auto;
+        }
+    }
+
+    .backlog-summary-card ul { padding-left: 1rem; margin-bottom: 0; }
+    .backlog-summary-card li + li { margin-top: 0.25rem; }
+    .backlog-reason-tag {
+        display: inline-block;
+        margin-top: 0.25rem;
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+
+    .status-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        z-index: 1040;
+        display: none;
+    }
+    .status-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 1050;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 1.25rem;
+        overflow-y: auto;
+    }
+    .status-modal-card {
+        width: min(760px, calc(100vw - 2.5rem));
+        max-height: calc(100vh - 2.5rem);
+        background: #fff;
+        border-radius: 0.75rem;
+        box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.18);
+        display: flex;
+        flex-direction: column;
+    }
+    .status-modal-card .card-header {
+        padding: 1rem 1.25rem;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+    .status-modal-card .card-body {
+        padding: 1.25rem;
+        overflow-y: auto;
+    }
+    .status-modal-card .form-label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    .status-modal-card .form-text {
+        margin-top: 0.5rem;
+    }
+    .status-modal-card textarea.form-control {
+        min-height: 8rem;
+        resize: vertical;
+    }
+    .status-modal-card #status-modal-close,
+    .status-modal-card #status-modal-cancel,
+    .status-modal-card #status-modal-submit {
+        min-width: 7.5rem;
+    }
+    .status-modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        padding-top: 0.25rem;
+    }
+    @media (max-width: 576px) {
+        .status-modal {
+            padding: 0.75rem;
+            align-items: flex-start;
+        }
+        .status-modal-card {
+            width: 100%;
+            max-height: calc(100vh - 1.5rem);
+        }
+        .status-modal-card .card-header,
+        .status-modal-card .card-body {
+            padding: 1rem;
+        }
+        .status-modal-card #status-modal-close,
+        .status-modal-card #status-modal-cancel,
+        .status-modal-card #status-modal-submit {
+            width: 100%;
+        }
+        .status-modal-actions {
+            flex-direction: column-reverse;
+            align-items: stretch;
+        }
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <h2 class="mb-0"><i class="fas fa-truck-fast"></i> Warehouse Deliveries</h2>
+    <div class="d-flex align-items-center flex-wrap gap-2">
+        <span id="live-indicator" class="badge bg-secondary">Connecting…</span>
+        <form method="get" class="d-flex align-items-center gap-2 mb-0">
+            <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}"
+                   class="form-control form-control-sm" aria-label="Delivery date">
+            <button class="btn btn-sm btn-outline-secondary" type="submit">Go</button>
+        </form>
+        <a href="{% url 'warehouse:history' %}" class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-clock-rotate-left"></i> Delivery History
+        </a>
+        {% if can_edit %}
+            <a href="{% url 'warehouse:backlog_reason_list' %}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-tags"></i> Backlog Categories
+            </a>
+            <a href="{% url 'warehouse:create' %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-plus"></i> New Delivery
+            </a>
+        {% endif %}
+        {% if can_export %}
+            <a href="{% url 'warehouse:export' %}?date={{ selected_date|date:'Y-m-d' }}"
+               class="btn btn-sm btn-success">
+                <i class="fas fa-file-excel"></i> Export Excel
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-lg-3">
+        <div class="card backlog-summary-card h-100">
+            <div class="card-header fw-semibold">Active Backlog</div>
+            <div class="card-body">
+                <div class="display-6 mb-2">{{ backlog_summary.total }}</div>
+                <div class="text-muted small">
+                    Items currently back in <strong>For Schedule</strong> after a failed or postponed move.
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-3">
+        <div class="card backlog-summary-card h-100">
+            <div class="card-header fw-semibold">Top Reasons</div>
+            <div class="card-body small">
+                {% if backlog_summary.by_reason %}
+                    <ul>
+                        {% for item in backlog_summary.by_reason|slice:":5" %}
+                            <li>
+                                {{ item.backlog_reason__name|default:'Uncategorized' }}
+                                <span class="text-muted">({{ item.total }})</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="text-muted">No active backlog items.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-3">
+        <div class="card backlog-summary-card h-100">
+            <div class="card-header fw-semibold">By AE</div>
+            <div class="card-body small">
+                {% if backlog_summary.by_ae %}
+                    <ul>
+                        {% for item in backlog_summary.by_ae|slice:":5" %}
+                            <li>{{ item.ae|default:'—' }} <span class="text-muted">({{ item.total }})</span></li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="text-muted">No active backlog items.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-3">
+        <div class="card backlog-summary-card h-100">
+            <div class="card-header fw-semibold">By Area / Repeat Items</div>
+            <div class="card-body small">
+                {% if backlog_summary.by_area %}
+                    <div class="mb-2">
+                        {% for item in backlog_summary.by_area|slice:":3" %}
+                            <div>{{ item.area|default:'Unspecified' }} <span class="text-muted">({{ item.total }})</span></div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                {% if backlog_summary.repeat_items %}
+                    <div class="text-muted fw-semibold mt-2">Repeat backlog</div>
+                    {% for item in backlog_summary.repeat_items|slice:":3" %}
+                        <div>{{ item.so_number }} <span class="text-muted">({{ item.backlog_count }}x)</span></div>
+                    {% endfor %}
+                {% elif not backlog_summary.by_area %}
+                    <div class="text-muted">No active backlog items.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="delivery-board"
+     data-can-edit="{% if can_edit %}1{% else %}0{% endif %}"
+     data-selected-date="{{ selected_date|date:'Y-m-d' }}">
+    {% csrf_token %}
+
+{# ---------------- Section 1: FOR SCHEDULE ---------------- #}
+<div class="card mb-4">
+    <div class="card-header section-purple d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-hourglass-half me-1"></i> FOR SCHEDULE</span>
+        <span class="badge bg-light text-dark" data-count-for="FOR_SCHEDULE">
+            {{ for_schedule|length }} item(s)
+        </span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle delivery-table mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>S.O. / SRF# / POR#</th>
+                    <th>CLIENT</th>
+                    <th>ITEM / PARTICULAR</th>
+                    <th>AREA</th>
+                    <th>DRIVER / STAFF</th>
+                    <th>VEHICLE PLATE</th>
+                    <th class="text-center">AE</th>
+                    <th>REMARKS</th>
+                    {% if can_edit %}<th class="text-end">ACTION</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody id="tbody-for-schedule">
+                {% for d in for_schedule %}
+                    {% include 'warehouse/_delivery_row.html' %}
+                {% empty %}
+                    <tr class="empty-row">
+                        <td colspan="{% if can_edit %}9{% else %}8{% endif %}" class="text-center text-muted py-3">No records</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# ---------------- Section 2: SCHEDULED DELIVERY ---------------- #}
+<div class="card mb-4">
+    <div class="card-header section-yellow d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="section-header-main">
+            <i class="fas fa-clipboard-check me-1"></i> SCHEDULED DELIVERY
+            <input type="date" value="{{ selected_date|date:'Y-m-d' }}" 
+                   class="ms-2 section-date-picker" data-target-offset="0"
+                   onchange="window.location.href='?date=' + this.value">
+        </div>
+        <div class="section-header-tools">
+            {% if can_edit %}
+                <form method="post"
+                      action="{% url 'warehouse:import_scheduled' %}"
+                      enctype="multipart/form-data"
+                      class="scheduled-import-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="selected_date" value="{{ selected_date|date:'Y-m-d' }}">
+                    <input type="file"
+                           id="scheduled-import-file"
+                           name="file"
+                           class="scheduled-import-input"
+                           accept=".xlsx,.xlsm,.csv"
+                           aria-label="Import Scheduled Delivery Excel or CSV"
+                           title="Import the SCHEDULED DELIVERY Excel sheet or a CSV with matching columns"
+                           onchange="if (this.files.length) { this.form.submit(); }"
+                           required>
+                    <label for="scheduled-import-file" class="btn btn-sm btn-outline-dark mb-0">
+                        <i class="fas fa-file-import me-1"></i> Import File
+                    </label>
+                </form>
+            {% endif %}
+            <span class="badge bg-light text-dark" data-count-for="SCHEDULED">
+                {{ scheduled|length }} item(s)
+            </span>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle delivery-table mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>S.O. / SRF# / POR#</th>
+                    <th>CLIENT</th>
+                    <th>ITEM / PARTICULAR</th>
+                    <th>AREA</th>
+                    <th>DRIVER / STAFF</th>
+                    <th>VEHICLE PLATE</th>
+                    <th class="text-center">AE</th>
+                    <th>REMARKS</th>
+                    {% if can_edit %}<th class="text-end">ACTION</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody id="tbody-scheduled">
+                {% for d in scheduled %}
+                    {% include 'warehouse/_delivery_row.html' %}
+                {% empty %}
+                    <tr class="empty-row">
+                        <td colspan="{% if can_edit %}9{% else %}8{% endif %}" class="text-center text-muted py-3">No records</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer van-details">
+        <div class="fw-bold mb-2"><i class="fas fa-truck me-1"></i> VAN DETAILS</div>
+        <div class="table-responsive">
+            <table class="table table-sm table-borderless mb-0">
+                <thead>
+                    <tr class="text-muted small">
+                        <th>VEHICLE PLATE</th>
+                        <th>DRIVER / STAFF</th>
+                        <th class="text-end">ITEMS</th>
+                    </tr>
+                </thead>
+                <tbody id="van-details-body">
+                    {% for van in van_details %}
+                        <tr data-plate="{{ van.vehicle_plate }}"
+                            data-driver="{{ van.driver_staff }}"
+                            data-staff="{{ van.warehouse_staff }}">
+                            <td class="fw-semibold">{{ van.vehicle_plate|default:'—' }}</td>
+                            <td>{{ van.driver_staff_display|default:'—' }}</td>
+                            <td class="text-end">{{ van.count }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr class="empty-row">
+                            <td colspan="3" class="text-muted">No vehicles assigned yet.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{# ---------------- Section 3: ACCOMPLISHED DELIVERY ---------------- #}
+<div class="card mb-4">
+    <div class="card-header section-green d-flex justify-content-between align-items-center">
+        <span>
+            <i class="fas fa-circle-check me-1"></i> ACCOMPLISHED DELIVERY
+            <input type="date" value="{{ accomplished_date|date:'Y-m-d' }}"
+                   class="ms-2 section-date-picker"
+                   onchange="var d = new Date(this.value); d.setDate(d.getDate() + 1); window.location.href='?date=' + d.toISOString().split('T')[0]">
+        </span>
+        <span class="badge bg-light text-dark" data-count-for="ACCOMPLISHED">
+            {{ accomplished|length }} item(s)
+        </span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle delivery-table mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>S.O. / SRF# / POR#</th>
+                    <th>CLIENT</th>
+                    <th>ITEM / PARTICULAR</th>
+                    <th>AREA</th>
+                    <th>DRIVER / STAFF</th>
+                    <th>VEHICLE PLATE</th>
+                    <th class="text-center">AE</th>
+                    <th>REMARKS</th>
+                    {% if can_edit %}<th class="text-end">ACTION</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody id="tbody-accomplished">
+                {% for d in accomplished %}
+                    {% include 'warehouse/_delivery_row.html' %}
+                {% empty %}
+                    <tr class="empty-row">
+                        <td colspan="{% if can_edit %}9{% else %}8{% endif %}" class="text-center text-muted py-3">No records</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if can_edit %}
+<div id="status-modal-backdrop" class="status-modal-backdrop"></div>
+<div id="status-modal" class="status-modal" aria-hidden="true">
+    <div class="status-modal-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong id="status-modal-title">Update delivery status</strong>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="status-modal-close">
+                Close
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="mb-3 small text-muted" id="status-modal-hint"></div>
+            <div class="mb-3" id="status-modal-reason-wrap" style="display:none;">
+                <label for="status-modal-reason" class="form-label">Backlog category</label>
+                <select id="status-modal-reason" class="form-select">
+                    <option value="">---------</option>
+                    {% for reason in active_backlog_reasons %}
+                        <option value="{{ reason.id }}">{{ reason.name }} ({{ reason.get_reason_group_display }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3" id="status-modal-date-wrap" style="display:none;">
+                <label for="status-modal-date" class="form-label">Accomplished date</label>
+                <input type="date" id="status-modal-date" class="form-control">
+                <div class="form-text">
+                    Use the actual delivery date when you are marking an item complete late.
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="status-modal-remarks" class="form-label">Remarks</label>
+                <textarea id="status-modal-remarks" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="status-modal-actions">
+                <button type="button" class="btn btn-outline-secondary" id="status-modal-cancel">Cancel</button>
+                <button type="button" class="btn btn-primary" id="status-modal-submit">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    'use strict';
+
+    // WebSocket endpoint registered in warehouse/routing.py
+    var WS_PATH = '/ws/warehouse/deliveries/';
+
+    var SECTION_TBODY = {
+        FOR_SCHEDULE: 'tbody-for-schedule',
+        SCHEDULED: 'tbody-scheduled',
+        ACCOMPLISHED: 'tbody-accomplished'
+    };
+    // The ACTION column is only rendered for editors (warehouse office / admin).
+    var board = document.getElementById('delivery-board');
+    var CAN_EDIT = !!(board && board.dataset.canEdit === '1');
+    var EDIT_URL_TEMPLATE = '{% url "warehouse:update" 0 %}';
+    var TIMELINE_URL_TEMPLATE = '{% url "warehouse:timeline" 0 %}';
+    var COLUMN_COUNT = CAN_EDIT ? 9 : 8;
+    var RECONNECT_MS = 3000;
+    var FLASH_MS = 1500;
+    var statusModal = document.getElementById('status-modal');
+    var statusBackdrop = document.getElementById('status-modal-backdrop');
+    var statusTitle = document.getElementById('status-modal-title');
+    var statusHint = document.getElementById('status-modal-hint');
+    var statusRemarks = document.getElementById('status-modal-remarks');
+    var statusReasonWrap = document.getElementById('status-modal-reason-wrap');
+    var statusReason = document.getElementById('status-modal-reason');
+    var statusDateWrap = document.getElementById('status-modal-date-wrap');
+    var statusDate = document.getElementById('status-modal-date');
+    var statusSubmit = document.getElementById('status-modal-submit');
+    var pendingStatusChange = null;
+
+    function tbodyFor(status) {
+        var id = SECTION_TBODY[status];
+        return id ? document.getElementById(id) : null;
+    }
+
+    function makeCell(text, className) {
+        var td = document.createElement('td');
+        td.textContent = text || '';
+        if (className) { td.className = className; }
+        return td;
+    }
+
+    function buildRow(d) {
+        var tr = document.createElement('tr');
+        tr.dataset.deliveryId = d.id;
+        tr.dataset.so = d.so_number;
+        tr.dataset.plate = d.vehicle_plate || '';
+        tr.dataset.driver = d.driver_staff || '';
+        tr.dataset.staff = d.warehouse_staff || '';
+        tr.dataset.status = d.status;
+        tr.dataset.scheduledDate = d.scheduled_date || '';
+        tr.dataset.accomplishedDate = d.accomplished_date || '';
+
+        var soCell = document.createElement('td');
+        soCell.className = 'fw-semibold text-nowrap';
+        var soLink = document.createElement('a');
+        soLink.href = TIMELINE_URL_TEMPLATE.replace('/0/', '/' + d.id + '/');
+        soLink.className = 'link-dark text-decoration-none';
+        soLink.title = 'View delivery timeline';
+        soLink.textContent = d.so_number;
+        soCell.appendChild(soLink);
+        if (d.is_backlog) {
+            var badge = document.createElement('span');
+            badge.className = 'badge bg-danger ms-1';
+            badge.title = 'Backlog (moved back ' + d.backlog_count + ' times)';
+            badge.textContent = 'BACKLOG';
+            soCell.appendChild(badge);
+        }
+        tr.appendChild(soCell);
+
+        tr.appendChild(makeCell(d.client));
+        tr.appendChild(makeCell(d.item));
+        tr.appendChild(makeCell(d.area));
+
+        var driverDisplay = d.driver_staff || '';
+        if (d.warehouse_staff) {
+            driverDisplay += (driverDisplay ? ' - ' : '') + d.warehouse_staff;
+        }
+        tr.appendChild(makeCell(driverDisplay));
+
+        tr.appendChild(makeCell(d.vehicle_plate, 'text-nowrap'));
+        tr.appendChild(makeCell(d.ae, 'text-center text-nowrap'));
+
+        // Remarks stay bold red while the delivery is still FOR SCHEDULE.
+        var remarks = document.createElement('td');
+        if (d.status === 'FOR_SCHEDULE' && d.remarks) {
+            var span = document.createElement('span');
+            span.className = 'remarks-urgent';
+            span.textContent = d.remarks;
+            remarks.appendChild(span);
+        } else {
+            remarks.textContent = d.remarks || '';
+        }
+        if (d.backlog_reason) {
+            var reasonTag = document.createElement('div');
+            reasonTag.className = 'backlog-reason-tag';
+            reasonTag.textContent = 'Category: ' + d.backlog_reason;
+            remarks.appendChild(reasonTag);
+        }
+        tr.appendChild(remarks);
+
+        if (CAN_EDIT) {
+            var action = document.createElement('td');
+            action.className = 'text-end text-nowrap';
+
+            if (d.status === 'SCHEDULED') {
+                var rescheduleBtn = document.createElement('button');
+                rescheduleBtn.type = 'button';
+                rescheduleBtn.className = 'btn btn-sm btn-outline-danger me-1 quick-status-btn';
+                rescheduleBtn.dataset.deliveryId = d.id;
+                rescheduleBtn.dataset.status = 'FOR_SCHEDULE';
+                rescheduleBtn.title = 'Reschedule (Move to For Schedule)';
+                rescheduleBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+                action.appendChild(rescheduleBtn);
+
+                var accomplishedBtn = document.createElement('button');
+                accomplishedBtn.type = 'button';
+                accomplishedBtn.className = 'btn btn-sm btn-outline-success quick-status-btn';
+                accomplishedBtn.dataset.deliveryId = d.id;
+                accomplishedBtn.dataset.status = 'ACCOMPLISHED';
+                accomplishedBtn.title = 'Accomplished (Mark as Done)';
+                accomplishedBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+                action.appendChild(accomplishedBtn);
+            } else {
+                var link = document.createElement('a');
+                link.href = EDIT_URL_TEMPLATE.replace('/0/', '/' + d.id + '/');
+                link.className = 'btn btn-sm btn-outline-secondary';
+                link.title = 'Edit ' + d.so_number;
+                link.innerHTML = '<i class="fas fa-pen"></i>';
+                action.appendChild(link);
+            }
+            tr.appendChild(action);
+        }
+
+        return tr;
+    }
+
+    function removeRow(id) {
+        var rows = document.querySelectorAll('tr[data-delivery-id="' + id + '"]');
+        Array.prototype.forEach.call(rows, function (tr) { tr.remove(); });
+    }
+
+    function ensureEmptyRow(tbody) {
+        if (!tbody) { return; }
+        var hasRows = tbody.querySelector('tr[data-delivery-id]');
+        var placeholder = tbody.querySelector('tr.empty-row');
+
+        if (hasRows) {
+            if (placeholder) { placeholder.remove(); }
+            return;
+        }
+        if (!placeholder) {
+            placeholder = document.createElement('tr');
+            placeholder.className = 'empty-row';
+            var td = document.createElement('td');
+            td.colSpan = COLUMN_COUNT;
+            td.className = 'text-center text-muted py-3';
+            td.textContent = 'No records';
+            placeholder.appendChild(td);
+            tbody.appendChild(placeholder);
+        }
+    }
+
+    function refreshCounts() {
+        Object.keys(SECTION_TBODY).forEach(function (status) {
+            var tbody = tbodyFor(status);
+            var badge = document.querySelector('[data-count-for="' + status + '"]');
+            if (!tbody || !badge) { return; }
+            badge.textContent =
+                tbody.querySelectorAll('tr[data-delivery-id]').length + ' item(s)';
+        });
+    }
+
+    // Rebuild the VAN DETAILS footer from whatever is currently in the
+    // Scheduled table, grouped by vehicle plate + driver/staff pair.
+    function refreshVanDetails() {
+        var tbody = document.getElementById('tbody-scheduled');
+        var body = document.getElementById('van-details-body');
+        if (!tbody || !body) { return; }
+
+        var grouped = {};
+        Array.prototype.forEach.call(
+            tbody.querySelectorAll('tr[data-delivery-id]'),
+            function (tr) {
+                var plate = (tr.dataset.plate || '').trim();
+                var driver = (tr.dataset.driver || '').trim();
+                var staff = (tr.dataset.staff || '').trim();
+                if (!plate && !driver && !staff) { return; }
+                var key = plate + '||' + driver + '||' + staff;
+                if (!grouped[key]) {
+                    grouped[key] = {
+                        plate: plate,
+                        driver: driver,
+                        staff: staff,
+                        display: driver && staff ? (driver + ' - ' + staff) : (driver || staff),
+                        count: 0,
+                        so: []
+                    };
+                }
+                grouped[key].count += 1;
+                grouped[key].so.push(tr.dataset.so);
+            }
+        );
+
+        body.innerHTML = '';
+        var keys = Object.keys(grouped);
+
+        if (!keys.length) {
+            var empty = document.createElement('tr');
+            empty.className = 'empty-row';
+            var emptyCell = document.createElement('td');
+            emptyCell.colSpan = 3;
+            emptyCell.className = 'text-muted';
+            emptyCell.textContent = 'No vehicles assigned yet.';
+            empty.appendChild(emptyCell);
+            body.appendChild(empty);
+            return;
+        }
+
+        keys.forEach(function (key) {
+            var van = grouped[key];
+            var tr = document.createElement('tr');
+            tr.dataset.plate = van.plate;
+            tr.dataset.driver = van.driver;
+            tr.dataset.staff = van.staff;
+            tr.appendChild(makeCell(van.plate || '—', 'fw-semibold'));
+            tr.appendChild(makeCell(van.display || '—'));
+            tr.appendChild(makeCell(String(van.count), 'text-end'));
+            body.appendChild(tr);
+        });
+    }
+
+    function flashRow(tr) {
+        tr.classList.add('row-flash');
+        window.setTimeout(function () { tr.classList.remove('row-flash'); }, FLASH_MS);
+    }
+
+    function closeStatusModal() {
+        if (!statusModal || !statusBackdrop) { return; }
+        statusModal.style.display = 'none';
+        statusBackdrop.style.display = 'none';
+        statusModal.setAttribute('aria-hidden', 'true');
+        if (statusRemarks) { statusRemarks.value = ''; }
+        if (statusReason) { statusReason.value = ''; }
+        if (statusDate) { statusDate.value = ''; }
+        pendingStatusChange = null;
+    }
+
+    function openStatusModal(config) {
+        if (!statusModal || !statusBackdrop) { return; }
+        pendingStatusChange = config;
+        statusTitle.textContent = config.title;
+        statusHint.textContent = config.hint;
+        statusRemarks.value = '';
+        if (config.requireReason) {
+            statusReasonWrap.style.display = '';
+        } else {
+            statusReasonWrap.style.display = 'none';
+            statusReason.value = '';
+        }
+        if (config.requireDate) {
+            statusDateWrap.style.display = '';
+            statusDate.value = config.defaultDate || '';
+        } else {
+            statusDateWrap.style.display = 'none';
+            statusDate.value = '';
+        }
+        statusModal.style.display = 'flex';
+        statusBackdrop.style.display = 'block';
+        statusModal.setAttribute('aria-hidden', 'false');
+        (config.requireDate ? statusDate : statusRemarks).focus();
+    }
+
+    function applyEvent(payload) {
+        var d = payload && payload.delivery;
+        if (!d) { return; }
+
+        // The row may currently live in any section — drop it everywhere first.
+        removeRow(d.id);
+
+        if (payload.event !== 'deleted') {
+            var tbody = tbodyFor(d.status);
+            if (tbody) {
+                var row = buildRow(d);
+                tbody.appendChild(row);
+                flashRow(row);
+            }
+        }
+
+        Object.keys(SECTION_TBODY).forEach(function (status) {
+            ensureEmptyRow(tbodyFor(status));
+        });
+        refreshCounts();
+        refreshVanDetails();
+    }
+
+    function setLive(className, label) {
+        var el = document.getElementById('live-indicator');
+        if (!el) { return; }
+        el.className = 'badge ' + className;
+        el.textContent = label;
+    }
+
+    // Event delegation for quick status buttons
+    if (board && CAN_EDIT) {
+        document.getElementById('status-modal-close').addEventListener('click', closeStatusModal);
+        document.getElementById('status-modal-cancel').addEventListener('click', closeStatusModal);
+        statusBackdrop.addEventListener('click', closeStatusModal);
+        statusSubmit.addEventListener('click', function () {
+            if (!pendingStatusChange) { return; }
+
+            var remarks = (statusRemarks.value || '').trim();
+            var reasonId = statusReason ? statusReason.value : '';
+            var accomplishedDate = statusDate ? statusDate.value : '';
+
+            if (!remarks) {
+                alert('Remarks are required for this status change.');
+                return;
+            }
+            if (pendingStatusChange.requireReason && !reasonId) {
+                alert('Please select a backlog category.');
+                return;
+            }
+            if (pendingStatusChange.requireDate && !accomplishedDate) {
+                alert('Please select the actual accomplished date.');
+                return;
+            }
+
+            pendingStatusChange.button.disabled = true;
+
+            fetch('/warehouse/' + pendingStatusChange.id + '/update-status/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body:
+                    'status=' + encodeURIComponent(pendingStatusChange.status) +
+                    '&remarks=' + encodeURIComponent(remarks) +
+                    '&backlog_reason=' + encodeURIComponent(reasonId) +
+                    '&accomplished_date=' + encodeURIComponent(accomplishedDate)
+            }).then(function (response) {
+                if (!response.ok) {
+                    return response.json().catch(function () {
+                        return { error: 'Failed to update status.' };
+                    }).then(function (payload) {
+                        pendingStatusChange.button.disabled = false;
+                        alert(payload.error || 'Failed to update status.');
+                    });
+                }
+                closeStatusModal();
+            }).catch(function (err) {
+                pendingStatusChange.button.disabled = false;
+                console.error(err);
+            });
+        });
+
+        board.addEventListener('click', function (e) {
+            var btn = e.target.closest('.quick-status-btn');
+            if (!btn) { return; }
+
+            var id = btn.dataset.deliveryId;
+            var status = btn.dataset.status;
+            var row = btn.closest('tr[data-delivery-id]');
+            var defaultAccomplishedDate = '';
+
+            if (status === 'ACCOMPLISHED') {
+                defaultAccomplishedDate =
+                    (row && row.dataset.scheduledDate) ||
+                    (board && board.dataset.selectedDate) ||
+                    '';
+            }
+
+            openStatusModal({
+                id: id,
+                status: status,
+                button: btn,
+                requireReason: status === 'FOR_SCHEDULE',
+                requireDate: status === 'ACCOMPLISHED',
+                defaultDate: defaultAccomplishedDate,
+                title: status === 'FOR_SCHEDULE' ? 'Move back to For Schedule' : 'Mark as Accomplished',
+                hint: status === 'FOR_SCHEDULE'
+                    ? 'Capture both the backlog category and the specific reason so the item can be reported and improved later.'
+                    : 'Record the final delivery outcome and set the actual accomplished date before closing the item.'
+            });
+        });
+    }
+
+    var socket = null;
+    var retryTimer = null;
+
+    function connect() {
+        var scheme = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        socket = new WebSocket(scheme + window.location.host + WS_PATH);
+
+        socket.onopen = function () { setLive('bg-success', 'Live'); };
+
+        socket.onmessage = function (event) {
+            try {
+                applyEvent(JSON.parse(event.data));
+            } catch (err) {
+                console.error('Invalid delivery payload', err);
+            }
+        };
+
+        socket.onclose = function () {
+            setLive('bg-secondary', 'Reconnecting…');
+            window.clearTimeout(retryTimer);
+            retryTimer = window.setTimeout(connect, RECONNECT_MS);
+        };
+
+        socket.onerror = function () { socket.close(); };
+    }
+
+    connect();
+})();
+</script>
+{% endblock %}

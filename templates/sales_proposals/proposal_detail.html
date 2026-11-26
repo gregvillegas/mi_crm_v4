@@ -1,0 +1,446 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load proposal_tags %}
+
+{% block content %}
+<div class="container mb-5">
+    <style>
+        .history-toggle-btn {
+            padding: 0;
+            font-size: 0.875rem;
+            text-decoration: none;
+        }
+        .history-toggle-btn:hover,
+        .history-toggle-btn:focus {
+            text-decoration: underline;
+        }
+    </style>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            Proposal {{ proposal.proposal_number }}
+            {% if proposal.is_test %}<span class="badge bg-dark align-middle ms-2"><i class="fas fa-flask me-1"></i>TEST</span>{% endif %}
+        </h2>
+        <div class="btn-group">
+            {% if proposal.is_multi_option %}
+            <a href="{% url 'multi_option_proposal_update' proposal.pk %}" class="btn btn-outline-primary">
+                <i class="fas fa-edit"></i> Edit
+            </a>
+            {% else %}
+            <a href="{% url 'proposal_update' proposal.pk %}" class="btn btn-outline-primary">
+                <i class="fas fa-edit"></i> Edit
+            </a>
+            {% endif %}
+            <a href="{% url 'proposal_pdf' proposal.pk %}" class="btn btn-outline-secondary" target="_blank">
+                <i class="fas fa-file-pdf"></i> View PDF
+            </a>
+            {% if not proposal.has_line_items %}
+            <a href="#" class="btn btn-success disabled" aria-disabled="true" title="Add at least one item before emailing the customer">
+                <i class="fas fa-envelope"></i> Email Customer
+            </a>
+            {% elif proposal.approval_required and proposal.approval_status != 'approved' %}
+            <a href="#" class="btn btn-success disabled" aria-disabled="true" title="Requires approval before sending">
+                <i class="fas fa-envelope"></i> Email Customer
+            </a>
+            {% else %}
+            <a href="{% url 'proposal_email' proposal.pk %}" class="btn btn-success">
+                <i class="fas fa-envelope"></i> Email Customer
+            </a>
+            {% endif %}
+            <a href="{% url 'proposal_delete' proposal.pk %}" class="btn btn-danger">
+                <i class="fas fa-trash"></i> Delete
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Proposal Content</h5>
+                </div>
+                <div class="card-body">
+                    {% if proposal.reference_number %}
+                    <p class="mb-1"><strong>{{ proposal.reference_number }}</strong></p>
+                    {% endif %}
+                    <h4 class="card-title">{{ proposal.subject }}</h4>
+                    <p class="text-muted">To: {{ proposal.customer.company_name }} (Attn: {{ proposal.contact_name|default:proposal.customer.contact_person_name }})</p>
+                    <hr>
+                    
+                    {% if proposal.introduction %}
+                    <div class="mb-4">
+                        <h6>Introduction</h6>
+                        <p>{{ proposal.introduction|linebreaks }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if proposal.is_multi_option %}
+                    <!-- Multi-Option Format -->
+                    {% for group in proposal.option_groups.all %}
+                    <div class="mb-4">
+                        <h5 class="fw-bold text-danger">{{ group.name }}</h5>
+                        {% if group.notes %}<p class="text-muted small">{{ group.notes }}</p>{% endif %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-center">Item</th>
+                                        {% if not proposal.hide_part_number %}<th>Part No.</th>{% endif %}
+                                        <th>Description</th>
+                                        <th class="text-center">Qty</th>
+                                        <th class="text-end">Unit Price</th>
+                                        <th class="text-end">Total Price</th>
+                                        <th>{% if proposal.use_availability_column %}Availability{% else %}Warranty{% endif %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in group.group_items.all %}
+                                    <tr>
+                                        <td class="text-center">{{ forloop.counter }}</td>
+                                        {% if not proposal.hide_part_number %}<td>{{ item.part_number }}</td>{% endif %}
+                                        <td>{{ item.description }}</td>
+                                        <td class="text-center">{{ item.quantity|intcomma }}</td>
+                                        <td class="text-end">{% if proposal.currency == 'USD' %}${% else %}₱{% endif %}{{ item.unit_price|intcomma }}</td>
+                                        <td class="text-end">{% if proposal.currency == 'USD' %}${% else %}₱{% endif %}{{ item.amount|intcomma }}</td>
+                                        <td>{% if proposal.use_availability_column %}{{ item.availability }}{% else %}{{ item.warranty }}{% endif %}</td>
+                                    </tr>
+                                    {% for component in item.bundle_components %}
+                                    <tr class="table-light">
+                                        <td></td>
+                                        {% if not proposal.hide_part_number %}<td>{{ component.part_number }}</td>{% endif %}
+                                        <td>{{ component.description }}</td>
+                                        <td class="text-center">{{ component.quantity|default_if_none:"" }}</td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-warning">
+                                        <td colspan="{% if proposal.hide_part_number %}4{% else %}5{% endif %}" class="text-end"><strong>Total Investment:</strong></td>
+                                        <td class="text-end"><strong>{% if proposal.currency == 'USD' %}${% else %}₱{% endif %}{{ group.subtotal|intcomma }}</strong></td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    {% else %}
+                    <!-- Standard Single-Format -->
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-center">Item</th>
+                                    {% if not proposal.hide_part_number %}<th>Part No.</th>{% endif %}
+                                    <th>Description</th>
+                                    <th class="text-center">Qty</th>
+                                    <th class="text-end">Unit Price</th>
+                                    <th class="text-end">Total Price</th>
+                                    <th>{% if proposal.use_availability_column %}Availability{% else %}Warranty{% endif %}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in proposal.items.all %}
+                                <tr{% if item.is_optional %} class="table-warning"{% endif %}>
+                                    <td class="text-center">{{ forloop.counter }}</td>
+                                    {% if not proposal.hide_part_number %}<td>{{ item.part_number }}</td>{% endif %}
+                                    <td>
+                                        {{ item.description }}
+                                        {% if item.is_optional %}
+                                        <div><small class="text-muted">Option {{ item.optional_option_number }}</small></div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">{{ item.quantity|intcomma }}</td>
+                                    <td class="text-end">{% if proposal.currency == 'USD' %}${% else %}₱{% endif %}{{ item.unit_price|intcomma }}</td>
+                                    <td class="text-end">
+                                        {% if proposal.currency == 'USD' %}${% else %}₱{% endif %}{{ item.amount|intcomma }}
+                                    </td>
+                                    <td>{% if proposal.use_availability_column %}{{ item.availability }}{% else %}{{ item.warranty }}{% endif %}</td>
+                                </tr>
+                                {% for component in item.bundle_components %}
+                                <tr class="table-light">
+                                    <td></td>
+                                    {% if not proposal.hide_part_number %}<td>{{ component.part_number }}</td>{% endif %}
+                                    <td>{{ component.description }}</td>
+                                    <td class="text-center">{{ component.quantity|default_if_none:"" }}</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                                {% endfor %}
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                {% if not proposal.has_optional_items %}
+                                <tr>
+                                    <td colspan="{% if proposal.hide_part_number %}4{% else %}5{% endif %}" class="text-end"><strong>Subtotal:</strong></td>
+                                    <td class="text-end">{% if proposal.currency == 'USD' %}${% else %}₱{% endif %}{{ proposal.subtotal|intcomma }}</td>
+                                    <td></td>
+                                </tr>
+                                {% if proposal.show_discount and proposal.discount_amount %}
+                                <tr>
+                                    <td colspan="{% if proposal.hide_part_number %}4{% else %}5{% endif %}" class="text-end text-muted">Discount:</td>
+                                    <td class="text-end text-muted">-{% if proposal.currency == 'USD' %}${% else %}₱{% endif %}{{ proposal.discount_amount|intcomma }}</td>
+                                    <td></td>
+                                </tr>
+                                {% endif %}
+                                {% if proposal.show_vat %}
+                                <tr>
+                                    <td colspan="{% if proposal.hide_part_number %}4{% else %}5{% endif %}" class="text-end text-muted">VAT (12%):</td>
+                                    <td class="text-end text-muted">{% if proposal.currency == 'USD' %}${% else %}₱{% endif %}{{ proposal.tax_amount|intcomma }}</td>
+                                    <td></td>
+                                </tr>
+                                {% endif %}
+                                <tr class="table-active">
+                                    <td colspan="{% if proposal.hide_part_number %}4{% else %}5{% endif %}" class="text-end"><strong>Grand Total{% if proposal.show_vat %} (VAT inclusive){% endif %}:</strong></td>
+                                    <td class="text-end"><strong>{% if proposal.currency == 'USD' %}${% else %}₱{% endif %}{{ proposal.total_amount|intcomma }}</strong></td>
+                                    <td></td>
+                                </tr>
+                                {% endif %}
+                            </tfoot>
+                        </table>
+                    </div>
+                    {% endif %}
+
+                    {% if proposal.closing %}
+                    <div class="mt-4">
+                        <h6>Terms & Conditions</h6>
+                        <p>{{ proposal.closing|linebreaks }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Details</h5>
+                </div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Status
+                        <span class="badge bg-{% if proposal.status == 'accepted' %}success{% elif proposal.status == 'sent' %}info{% elif proposal.status == 'declined' %}danger{% else %}secondary{% endif %}">
+                            {{ proposal.get_status_display }}
+                        </span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Date
+                        <span>{{ proposal.date }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Valid Until
+                        <span>{{ proposal.valid_until|default:"N/A" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Prepared By
+                        <span>{{ proposal.created_by.get_full_name }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Customer
+                        <a href="{% url 'customer_history' proposal.customer.pk %}">{{ proposal.customer.company_name }}</a>
+                    </li>
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Bank Details in PDF</span>
+                            {% if proposal.include_bank_details %}
+                            <span class="badge bg-success">Included</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Not included</span>
+                            {% endif %}
+                        </div>
+                        {% if proposal.include_bank_details %}
+                        <div class="mt-2 small">
+                            {% if proposal.currency == 'PHP' %}
+                            <div class="mb-1">
+                                <strong class="text-primary">BDO — Banco De Oro</strong><br>
+                                {{ proposal.php_account_name }}<br>
+                                Acct #: {{ proposal.php_account_number }}<br>
+                                Branch: {{ proposal.php_branch }} &nbsp;|&nbsp; Swift: {{ proposal.php_swift_code }}
+                            </div>
+                            <div>
+                                <strong class="text-primary">BPI — Bank of the Philippine Islands</strong><br>
+                                {{ proposal.php_bpi_account_name }}<br>
+                                Acct #: {{ proposal.php_bpi_account_number }}<br>
+                                Branch: {{ proposal.php_bpi_branch }} &nbsp;|&nbsp; Swift: {{ proposal.php_bpi_swift_code }}
+                            </div>
+                            {% else %}
+                            <div>
+                                <strong class="text-success">BDO USD — Banco De Oro</strong><br>
+                                {{ proposal.usd_beneficiary_name }}<br>
+                                Acct #: {{ proposal.usd_account_number }}<br>
+                                Swift: {{ proposal.usd_swift_code }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </li>
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Approval</span>
+                            <span class="badge bg-{% if proposal.approval_status == 'approved' %}success{% elif proposal.approval_status == 'rejected' %}danger{% elif proposal.approval_status == 'in_progress' %}warning{% elif proposal.approval_status == 'pending' %}secondary{% else %}secondary{% endif %}">
+                                {{ proposal.get_approval_status_display }}
+                            </span>
+                        </div>
+                        {% if proposal.approval_required %}
+                        <div class="mt-2">
+                            <small class="text-muted">Total (PHP): {{ proposal.approval_total_php|intcomma }}</small>
+                            <div class="mt-2">
+                                {% for step in proposal.approval_steps.all %}
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <div>
+                                        <span class="fw-semibold">Level {{ step.level }}: {{ step.approver.get_full_name|default:'Unassigned' }}</span>
+                                        {% if step.decided_at %}
+                                        <small class="text-muted d-block">{{ step.decided_at|date:"M d, Y H:i" }}</small>
+                                        {% endif %}
+                                        {% if step.comment %}
+                                        <div class="mt-1 p-2 rounded {% if step.status == 'approved' %}bg-success bg-opacity-10 border border-success{% elif step.status == 'rejected' %}bg-danger bg-opacity-10 border border-danger{% else %}bg-light border{% endif %}">
+                                            <small><i class="fas fa-comment-alt me-1 text-muted"></i>{{ step.comment }}</small>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <span class="badge bg-{% if step.status == 'approved' %}success{% elif step.status == 'rejected' %}danger{% else %}secondary{% endif %} ms-2 flex-shrink-0">{{ step.status|title }}</span>
+                                </div>
+                                {% empty %}
+                                <small class="text-muted">Awaiting chain generation</small>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </li>
+                </ul>
+            </div>
+            <!-- Email Send History -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-envelope me-2"></i>Email History</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if proposal.email_logs.all %}
+                    <ul class="list-group list-group-flush">
+                        {% for log in proposal.email_logs.all %}
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <span class="badge bg-{% if log.status == 'sent' %}success{% else %}danger{% endif %} me-2">{{ log.get_status_display }}</span>
+                                    <strong>{{ log.sent_at|date:"M d, Y H:i" }}</strong>
+                                    <span class="text-muted">by {{ log.sent_by.get_full_name|default:log.sent_by.username|default:"System" }}</span>
+                                </div>
+                            </div>
+                            <div class="mt-1 small">
+                                <strong>To:</strong> {{ log.recipients }}
+                                {% if log.cc %}<br><strong>CC:</strong> {{ log.cc }}{% endif %}
+                            </div>
+                            {% if log.error_message %}
+                            <div class="mt-1 small text-danger">
+                                <i class="fas fa-exclamation-circle me-1"></i>{{ log.error_message }}
+                            </div>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <div class="p-3"><small class="text-muted">No emails sent yet.</small></div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Change History</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if proposal.change_logs.all %}
+                    <ul class="list-group list-group-flush">
+                        {% for log in proposal.change_logs.all %}
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>{{ log.changed_at|date:"M d, Y H:i" }}</strong>
+                                    <span class="text-muted">by {{ log.changed_by.get_full_name|default:log.changed_by.username|default:"System" }}</span>
+                                    {% if log.changed_by and log.changed_by.role %}
+                                        <span class="badge bg-secondary ms-2">{{ log.changed_by.get_role_display }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% if log.summary %}
+                            <div class="mt-1">{{ log.summary }}</div>
+                            {% endif %}
+                            {% if log.details %}
+                            <div class="mt-2">
+                                <button
+                                    class="btn btn-link text-decoration-none history-toggle-btn"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#change-log-details-{{ log.id }}"
+                                    aria-expanded="false"
+                                    aria-controls="change-log-details-{{ log.id }}">
+                                    View details
+                                </button>
+                                <div class="collapse mt-2" id="change-log-details-{{ log.id }}">
+                                    <small class="text-muted">Details</small>
+                                    <ul class="mb-0">
+                                        {% for key, change in log.details|dict_items %}
+                                            {% if key != 'items' %}
+                                                <li>
+                                                    <strong>{{ key|cut:"_"|title }}</strong>:
+                                                    <span class="text-muted">{{ change.from|default:"—" }}</span>
+                                                    <span class="mx-1">→</span>
+                                                    <span>{{ change.to|default:"—" }}</span>
+                                                </li>
+                                            {% endif %}
+                                        {% endfor %}
+                                        {% with items_data=log.details|get_item:"items" %}
+                                        {% if items_data %}
+                                            <li class="mt-1">
+                                                <strong>Items</strong>:
+                                                <ul class="mb-0">
+                                                    {% for item_id, item_change in items_data|dict_items %}
+                                                        <li>
+                                                            {% if item_change.status == 'added' %}
+                                                                Added item (ID {{ item_id }}): {{ item_change.after.part_number|default:"" }} — {{ item_change.after.description|default:"" }} (Qty {{ item_change.after.quantity|default:"" }}, Unit {{ item_change.after.unit_price|default:"" }}, Warranty {{ item_change.after.warranty|default:"" }})
+                                                            {% elif item_change.status == 'deleted' %}
+                                                                Deleted item (ID {{ item_id }}): {{ item_change.before.part_number|default:"" }} — {{ item_change.before.description|default:"" }}
+                                                            {% elif item_change.status == 'updated' %}
+                                                                Updated item (ID {{ item_id }}):
+                                                                <ul class="mb-0">
+                                                                    <li>Part #: {{ item_change.before.part_number|default:"—" }} → {{ item_change.after.part_number|default:"—" }}</li>
+                                                                    <li>Description: {{ item_change.before.description|default:"—" }} → {{ item_change.after.description|default:"—" }}</li>
+                                                                    <li>Qty: {{ item_change.before.quantity|default:"—" }} → {{ item_change.after.quantity|default:"—" }}</li>
+                                                                    <li>Unit Cost: {{ item_change.before.unit_cost|default:"—" }} → {{ item_change.after.unit_cost|default:"—" }}</li>
+                                                                    <li>Unit Price: {{ item_change.before.unit_price|default:"—" }} → {{ item_change.after.unit_price|default:"—" }}</li>
+                                                                    <li>Warranty: {{ item_change.before.warranty|default:"—" }} → {{ item_change.after.warranty|default:"—" }}</li>
+                                                                </ul>
+                                                            {% else %}
+                                                                Item (ID {{ item_id }}) updated.
+                                                            {% endif %}
+                                                        </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </li>
+                                        {% endif %}
+                                        {% endwith %}
+                                    </ul>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item">
+                            <small class="text-muted">No changes logged yet.</small>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <div class="p-3"><small class="text-muted">No changes logged yet.</small></div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
